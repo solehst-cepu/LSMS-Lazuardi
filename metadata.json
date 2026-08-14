@@ -1,0 +1,6 @@
+{
+  "name": "Lazuardi Security Management System (LSMS)",
+  "description": "Sistem Informasi Manajemen Operasional Keamanan Lazuardi (LSMS) - Visitor Management, Patroli QR Code, Laporan Harian, Insiden, Lost & Found, Barang Titipan, dan Analytics ERP.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
