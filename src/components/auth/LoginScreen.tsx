@@ -3,11 +3,11 @@ import { useApp } from '../../context/AppContext';
 import { Shield, Lock, User as UserIcon, KeyRound, AlertTriangle, CheckCircle2, Eye, EyeOff, Info } from 'lucide-react';
 
 export const LoginScreen: React.FC = () => {
-  const { login, lockoutTimeLeft, usersList, loginPolicy } = useApp();
+  const { login, lockoutTimeLeft, loginPolicy } = useApp();
 
   const [loginMethod, setLoginMethod] = useState<'password' | 'pin'>('password');
-  const [username, setUsername] = useState('admin');
-  const [passwordOrPin, setPasswordOrPin] = useState('admin123');
+  const [username, setUsername] = useState('');
+  const [passwordOrPin, setPasswordOrPin] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -33,16 +33,6 @@ export const LoginScreen: React.FC = () => {
     } else {
       setSuccessMessage('Login berhasil! Mengalihkan ke Dashboard LSMS...');
     }
-  };
-
-  const fillQuickDemo = (userAccount: typeof usersList[0]) => {
-    setUsername(userAccount.username);
-    if (loginMethod === 'pin') {
-      setPasswordOrPin(userAccount.pin || '123456');
-    } else {
-      setPasswordOrPin(userAccount.password || 'admin123');
-    }
-    setErrorMessage('');
   };
 
   return (
@@ -85,7 +75,7 @@ export const LoginScreen: React.FC = () => {
               type="button"
               onClick={() => {
                 setLoginMethod('password');
-                setPasswordOrPin('admin123');
+                setPasswordOrPin('');
               }}
               className={`flex-1 py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
                 loginMethod === 'password'
@@ -100,7 +90,7 @@ export const LoginScreen: React.FC = () => {
               type="button"
               onClick={() => {
                 setLoginMethod('pin');
-                setPasswordOrPin('123456');
+                setPasswordOrPin('');
               }}
               className={`flex-1 py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
                 loginMethod === 'pin'
@@ -182,27 +172,6 @@ export const LoginScreen: React.FC = () => {
               <span>Masuk ke Sistem LSMS</span>
             </button>
           </form>
-
-          {/* Quick Demo Test Selector */}
-          <div className="pt-3 border-t border-slate-100">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Quick Demo Testing</span>
-              <span className="text-[10px] text-blue-600 font-medium">Pilih role untuk login cepat</span>
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              {usersList.slice(0, 3).map((u) => (
-                <button
-                  key={u.id}
-                  type="button"
-                  onClick={() => fillQuickDemo(u)}
-                  className="p-2 border border-slate-200 rounded-xl text-left hover:border-blue-500 hover:bg-blue-50/50 transition-all group"
-                >
-                  <div className="text-[11px] font-bold text-slate-800 truncate group-hover:text-blue-700">{u.name.split(' ')[0]}</div>
-                  <div className="text-[10px] text-slate-500 truncate">{u.role}</div>
-                </button>
-              ))}
-            </div>
-          </div>
 
           {/* System Rules Footer Info */}
           <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] text-slate-600 space-y-1">
