@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { compressImage } from '../../utils/imageCompressor';
 import { LostAndFound } from '../../types';
 import { DataTable, Column } from '../common/DataTable';
 import { ConfirmModal } from '../common/ConfirmModal';
@@ -43,16 +44,11 @@ export const LostFoundComponent: React.FC = () => {
 
   const [successToast, setSuccessToast] = useState(false);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (typeof reader.result === 'string') {
-          setForm((prev) => ({ ...prev, photoUrl: reader.result as string }));
-        }
-      };
-      reader.readAsDataURL(file);
+      const compressed = await compressImage(file, 400, 400, 0.65);
+      setForm((prev) => ({ ...prev, photoUrl: compressed }));
     }
   };
 

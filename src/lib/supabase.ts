@@ -7,29 +7,67 @@ export const DEFAULT_SUPABASE_ANON_KEY =
 export const SUPABASE_PROJECT_ID = 'idqwdkazshpftiiutjmq';
 export const SUPABASE_PROJECT_NAME = 'Lazuardi Security Management System (LSMS)';
 
-// Normalize URL in case user inputs with trailing slash or /rest/v1
-export function normalizeSupabaseUrl(url: string): string {
-  if (!url) return DEFAULT_SUPABASE_URL;
-  let clean = url.trim();
+// Helper to validate and normalize Supabase HTTP/HTTPS URL
+export function normalizeSupabaseUrl(urlCandidate?: any): string {
+  if (!urlCandidate || typeof urlCandidate !== 'string') {
+    return DEFAULT_SUPABASE_URL;
+  }
+  let clean = urlCandidate.trim();
   clean = clean.replace(/\/rest\/v1\/?$/, '');
   clean = clean.replace(/\/+$/, '');
+
+  if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
+    return DEFAULT_SUPABASE_URL;
+  }
+
+  try {
+    const parsed = new URL(clean);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return clean;
+    }
+  } catch {
+    return DEFAULT_SUPABASE_URL;
+  }
+  return DEFAULT_SUPABASE_URL;
+}
+
+export function normalizeSupabaseKey(keyCandidate?: any): string {
+  if (!keyCandidate || typeof keyCandidate !== 'string') {
+    return DEFAULT_SUPABASE_ANON_KEY;
+  }
+  const clean = keyCandidate.trim();
+  if (clean === '' || clean === 'undefined' || clean === 'null') {
+    return DEFAULT_SUPABASE_ANON_KEY;
+  }
   return clean;
 }
 
-export const SUPABASE_URL = normalizeSupabaseUrl(
-  (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_SUPABASE_URL) || DEFAULT_SUPABASE_URL
-);
+const rawEnvUrl = typeof import.meta !== 'undefined' ? (import.meta as any).env?.VITE_SUPABASE_URL : undefined;
+const rawEnvKey = typeof import.meta !== 'undefined' ? (import.meta as any).env?.VITE_SUPABASE_ANON_KEY : undefined;
 
-export const SUPABASE_ANON_KEY =
-  (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_SUPABASE_ANON_KEY) ||
-  DEFAULT_SUPABASE_ANON_KEY;
+export const SUPABASE_URL = normalizeSupabaseUrl(rawEnvUrl);
+export const SUPABASE_ANON_KEY = normalizeSupabaseKey(rawEnvKey);
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-  },
-});
+function initSupabaseClient() {
+  try {
+    return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+      },
+    });
+  } catch (e) {
+    console.warn('Failed to init Supabase with custom config, falling back to default:', e);
+    return createClient(DEFAULT_SUPABASE_URL, DEFAULT_SUPABASE_ANON_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+      },
+    });
+  }
+}
+
+export const supabase = initSupabaseClient();
 
 export interface SupabaseHealthStatus {
   connected: boolean;

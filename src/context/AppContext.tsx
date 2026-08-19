@@ -161,22 +161,11 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-function getStorage<T>(key: string, fallback: T): T {
-  try {
-    const item = localStorage.getItem(`lsms_${key}`);
-    return item ? JSON.parse(item) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function setStorage<T>(key: string, value: T) {
-  try {
-    localStorage.setItem(`lsms_${key}`, JSON.stringify(value));
-  } catch (e) {
-    console.error('Storage error:', e);
-  }
-}
+import {
+  safeGetLocalStorage as getStorage,
+  safeSetLocalStorage as setStorage,
+  idbGet,
+} from '../utils/storage';
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User>(() =>
@@ -268,10 +257,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, [lockoutTimeLeft]);
 
-  // Initial Supabase healthcheck & background sync on startup
+  // Initial storage hydration & Supabase healthcheck on startup
   useEffect(() => {
     let isMounted = true;
-    async function initSupabase() {
+    async function initStorageAndSupabase() {
+      // 1. Hydrate from IndexedDB if available
+      try {
+        const idbVisitors = await idbGet<Visitor[] | null>('lsms_visitors', null);
+        if (idbVisitors && idbVisitors.length > 0 && isMounted) {
+          setVisitors(idbVisitors);
+        }
+        const idbDaily = await idbGet<DailyReport[] | null>('lsms_dailyReports', null);
+        if (idbDaily && idbDaily.length > 0 && isMounted) {
+          setDailyReports(idbDaily);
+        }
+        const idbPatrol = await idbGet<PatrolLog[] | null>('lsms_patrolLogs', null);
+        if (idbPatrol && idbPatrol.length > 0 && isMounted) {
+          setPatrolLogs(idbPatrol);
+        }
+        const idbIncidents = await idbGet<IncidentReport[] | null>('lsms_incidents', null);
+        if (idbIncidents && idbIncidents.length > 0 && isMounted) {
+          setIncidents(idbIncidents);
+        }
+        const idbLostFound = await idbGet<LostAndFound[] | null>('lsms_lostAndFound', null);
+        if (idbLostFound && idbLostFound.length > 0 && isMounted) {
+          setLostAndFound(idbLostFound);
+        }
+        const idbTitipan = await idbGet<BarangTitipan[] | null>('lsms_barangTitipan', null);
+        if (idbTitipan && idbTitipan.length > 0 && isMounted) {
+          setBarangTitipan(idbTitipan);
+        }
+        const idbVehiclesLog = await idbGet<SchoolVehicleLog[] | null>('lsms_vehiclesLog', null);
+        if (idbVehiclesLog && idbVehiclesLog.length > 0 && isMounted) {
+          setVehiclesLog(idbVehiclesLog);
+        }
+      } catch (e) {
+        console.warn('IndexedDB initial hydration note:', e);
+      }
+
+      // 2. Supabase health & remote sync
       try {
         const health = await testSupabaseHealth();
         if (isMounted) {
@@ -279,7 +303,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setSupabaseLatency(health.latencyMs || null);
         }
 
-        // Try pull existing cloud data if available
         if (health.connected) {
           const pullRes = await pullAllFromSupabase();
           if (pullRes.success && pullRes.data && isMounted) {
@@ -306,7 +329,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         console.warn('Initial Supabase hydration note:', e);
       }
     }
-    initSupabase();
+    initStorageAndSupabase();
     return () => {
       isMounted = false;
     };

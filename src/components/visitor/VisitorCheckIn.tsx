@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { UserPlus, Camera, Upload, CheckCircle2, ShieldCheck, AlertCircle } from 'lucide-react';
+import { compressImage } from '../../utils/imageCompressor';
 
 interface VisitorCheckInProps {
   onSuccessCheckIn?: () => void;
@@ -40,16 +41,12 @@ export const VisitorCheckIn: React.FC<VisitorCheckInProps> = ({ onSuccessCheckIn
     'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=200&auto=format&fit=crop&q=80',
   ];
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = reader.result as string;
-        setPhotoPreview(result);
-        setForm((prev) => ({ ...prev, photoUrl: result }));
-      };
-      reader.readAsDataURL(file);
+      const compressed = await compressImage(file, 400, 400, 0.65);
+      setPhotoPreview(compressed);
+      setForm((prev) => ({ ...prev, photoUrl: compressed }));
     }
   };
 
