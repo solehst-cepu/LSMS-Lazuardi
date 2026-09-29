@@ -163,6 +163,52 @@ export const LoginScreen: React.FC = () => {
               </div>
             </div>
 
+            {/* Quick Demo Login Chips */}
+            <div className="pt-1">
+              <span className="text-[11px] font-bold text-slate-500 block mb-1.5">Pilih Akun Demo / Presensi Cepat:</span>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLoginMethod('password');
+                    setUsername('admin');
+                    setPasswordOrPin('admin123');
+                    setErrorMessage('');
+                  }}
+                  className="p-2 text-left rounded-lg border border-slate-200 bg-slate-50 hover:bg-blue-50 hover:border-blue-300 transition-all text-[11px] cursor-pointer"
+                >
+                  <span className="font-bold text-slate-800 block truncate">Admin</span>
+                  <span className="text-[10px] text-slate-500 font-mono">admin123</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLoginMethod('password');
+                    setUsername('supervisor');
+                    setPasswordOrPin('super123');
+                    setErrorMessage('');
+                  }}
+                  className="p-2 text-left rounded-lg border border-slate-200 bg-slate-50 hover:bg-blue-50 hover:border-blue-300 transition-all text-[11px] cursor-pointer"
+                >
+                  <span className="font-bold text-slate-800 block truncate">Supervisor</span>
+                  <span className="text-[10px] text-slate-500 font-mono">super123</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLoginMethod('pin');
+                    setUsername('ismail');
+                    setPasswordOrPin('123456');
+                    setErrorMessage('');
+                  }}
+                  className="p-2 text-left rounded-lg border border-slate-200 bg-slate-50 hover:bg-blue-50 hover:border-blue-300 transition-all text-[11px] cursor-pointer"
+                >
+                  <span className="font-bold text-slate-800 block truncate">Pos Security</span>
+                  <span className="text-[10px] text-blue-700 font-mono font-bold">PIN 123456</span>
+                </button>
+              </div>
+            </div>
+
             <button
               type="submit"
               disabled={lockoutTimeLeft > 0}

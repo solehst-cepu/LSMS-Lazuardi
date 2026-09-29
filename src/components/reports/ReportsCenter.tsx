@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import { exportToExcel, exportToPDF, printData, ExportColumn } from '../../utils/export';
+import { sortNewestFirst } from '../../utils/sorting';
 import {
   FileSpreadsheet,
   Download,
@@ -33,8 +34,8 @@ export const ReportsCenter: React.FC = () => {
 
   const [selectedModule, setSelectedModule] = useState<ModuleType>('visitors');
   
-  // Date / Period Filters
-  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>('thisMonth');
+  // Date / Period Filters - default to 'all' so newest reports are visible immediately
+  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>('all');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [specificDate, setSpecificDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
@@ -106,8 +107,20 @@ export const ReportsCenter: React.FC = () => {
   // Extract Item Date Helper
   const getItemDate = (item: any): string => {
     if (item.date) return String(item.date).slice(0, 10);
+    if (item.dateFound) return String(item.dateFound).slice(0, 10);
+    if (item.dateIn) return String(item.dateIn).slice(0, 10);
+    if (item.dateOut) return String(item.dateOut).slice(0, 10);
+    if (item.claimDate) return String(item.claimDate).slice(0, 10);
     if (item.createdAt) return String(item.createdAt).slice(0, 10);
-    if (item.timestamp) return String(item.timestamp).slice(0, 10);
+    if (item.timestamp) {
+      const ts = String(item.timestamp).trim();
+      if (/^\d{4}-\d{2}-\d{2}/.test(ts)) return ts.slice(0, 10);
+      if (/^\d{1,2}[\/\-](\d{1,2})[\/\-](\d{4})/.test(ts)) {
+        const parts = ts.split(/[ ,]+/)[0].split(/[\/\-]/);
+        return `${parts[2]}-${String(parts[1]).padStart(2, '0')}-${String(parts[0]).padStart(2, '0')}`;
+      }
+      return ts.slice(0, 10);
+    }
     return '';
   };
 
@@ -225,52 +238,51 @@ export const ReportsCenter: React.FC = () => {
         ];
       case 'lostfound':
         return [
-          { header: 'No. Barang', key: 'itemNumber' },
-          { header: 'Tanggal Ditemukan', key: 'date' },
+          { header: 'No. ID Barang', key: 'id' },
+          { header: 'Tanggal Ditemukan', key: 'dateFound' },
           { header: 'Nama Barang', key: 'itemName' },
-          { header: 'Kategori', key: 'category' },
-          { header: 'Lokasi Ditemukan', key: 'locationFound' },
+          { header: 'Lokasi Ditemukan', key: 'location' },
           { header: 'Ditemukan Oleh', key: 'foundBy' },
-          { header: 'Penerima Pengambilan', key: 'takerName' },
+          { header: 'Penerima Pengambilan', key: 'claimedBy' },
           { header: 'Status', key: 'status' },
         ];
       case 'titipan':
         return [
-          { header: 'No. Tanda Terima', key: 'receiptNumber' },
-          { header: 'Tanggal', key: 'date' },
+          { header: 'No. ID Titipan', key: 'id' },
+          { header: 'Tanggal Masuk', key: 'dateIn' },
           { header: 'Jam Titip', key: 'timeIn' },
-          { header: 'Pengirim (Kurir/Ortu)', key: 'senderName' },
-          { header: 'Penerima Dituju', key: 'recipientName' },
-          { header: 'Unit Tujuan', key: 'recipientUnit' },
-          { header: 'Nama Barang', key: 'itemName' },
+          { header: 'Pemilik / Pengirim', key: 'ownerName' },
+          { header: 'No. HP / WhatsApp', key: 'phone' },
+          { header: 'Deskripsi Barang', key: 'itemDescription' },
           { header: 'Petugas Penerima', key: 'receiverSecurity' },
           { header: 'Status', key: 'status' },
         ];
       case 'vehicles':
         return [
-          { header: 'No. Log', key: 'logNumber' },
-          { header: 'Tanggal', key: 'date' },
-          { header: 'Plat Nomor', key: 'vehiclePlate' },
-          { header: 'Pengemudi', key: 'driverName' },
+          { header: 'ID Log', key: 'id' },
+          { header: 'Tanggal Keluar', key: 'dateOut' },
+          { header: 'Nama Armada', key: 'vehicleName' },
+          { header: 'Plat Nomor', key: 'plateNumber' },
+          { header: 'Pengemudi / Driver', key: 'driverName' },
           { header: 'Tujuan Perjalanan', key: 'destination' },
-          { header: 'Jam Berangkat', key: 'timeDeparture' },
-          { header: 'Jam Kembali', key: 'timeArrival' },
-          { header: 'KM Awal', key: 'odometerStart' },
-          { header: 'KM Akhir', key: 'odometerEnd' },
+          { header: 'Jam Keluar', key: 'timeOut' },
+          { header: 'Jam Masuk', key: 'timeIn' },
+          { header: 'Keperluan', key: 'purpose' },
           { header: 'Status', key: 'status' },
         ];
     }
   }, [selectedModule]);
 
-  // Formatted data for export/table
+  // Formatted data for export/table - selalu terurut data terbaru di urutan pertama
   const displayData = useMemo(() => {
-    return filteredData.map((item: any) => {
+    const formatted = filteredData.map((item: any) => {
       const copy = { ...item };
       if (Array.isArray(item.officers)) {
         copy.officersFormatted = item.officers.join(', ');
       }
       return copy;
     });
+    return sortNewestFirst(formatted);
   }, [filteredData]);
 
   // Module Name in Indonesian

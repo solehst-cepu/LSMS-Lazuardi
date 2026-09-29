@@ -166,14 +166,23 @@ import {
   safeSetLocalStorage as setStorage,
   idbGet,
 } from '../utils/storage';
+import { sortNewestFirst } from '../utils/sorting';
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User>(() =>
     getStorage('currentUser', initialUsers[0])
   );
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() =>
-    getStorage('isAuthenticated', true)
-  );
+  // Saat pertama kali masuk ke web, halaman pertama yang muncul adalah halaman Login
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    try {
+      // Hapus data autentikasi lama dari localStorage agar selalu mulai di login saat pertama masuk
+      localStorage.removeItem('lsms_isAuthenticated');
+      const sessionAuth = sessionStorage.getItem('lsms_session_auth');
+      return sessionAuth === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [usersList, setUsersList] = useState<User[]>(() =>
     getStorage('usersList', initialUsers)
   );
@@ -183,26 +192,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [failedAttempts, setFailedAttempts] = useState<number>(0);
   const [lockoutTimeLeft, setLockoutTimeLeft] = useState<number>(0);
 
+  // List laporan & hasil input diinisialisasi terurut dari yang terbaru di urutan pertama
   const [visitors, setVisitors] = useState<Visitor[]>(() =>
-    getStorage('visitors', initialVisitors)
+    sortNewestFirst(getStorage('visitors', initialVisitors))
   );
   const [dailyReports, setDailyReports] = useState<DailyReport[]>(() =>
-    getStorage('dailyReports', initialDailyReports)
+    sortNewestFirst(getStorage('dailyReports', initialDailyReports))
   );
   const [patrolLogs, setPatrolLogs] = useState<PatrolLog[]>(() =>
-    getStorage('patrolLogs', initialPatrolLogs)
+    sortNewestFirst(getStorage('patrolLogs', initialPatrolLogs))
   );
   const [incidents, setIncidents] = useState<IncidentReport[]>(() =>
-    getStorage('incidents', initialIncidents)
+    sortNewestFirst(getStorage('incidents', initialIncidents))
   );
   const [lostAndFound, setLostAndFound] = useState<LostAndFound[]>(() =>
-    getStorage('lostAndFound', initialLostAndFound)
+    sortNewestFirst(getStorage('lostAndFound', initialLostAndFound))
   );
   const [barangTitipan, setBarangTitipan] = useState<BarangTitipan[]>(() =>
-    getStorage('barangTitipan', initialBarangTitipan)
+    sortNewestFirst(getStorage('barangTitipan', initialBarangTitipan))
   );
   const [vehiclesLog, setVehiclesLog] = useState<SchoolVehicleLog[]>(() =>
-    getStorage('vehiclesLog', initialVehiclesLog)
+    sortNewestFirst(getStorage('vehiclesLog', initialVehiclesLog))
   );
 
   // Master States
@@ -233,7 +243,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     getStorage('notifications', initialNotifications)
   );
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() =>
-    getStorage('auditLogs', initialAuditLogs)
+    sortNewestFirst(getStorage('auditLogs', initialAuditLogs))
   );
 
   // Supabase Connection & Sync State
@@ -261,35 +271,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     let isMounted = true;
     async function initStorageAndSupabase() {
-      // 1. Hydrate from IndexedDB if available
+      // 1. Hydrate from IndexedDB if available (always maintain newest first order)
       try {
         const idbVisitors = await idbGet<Visitor[] | null>('lsms_visitors', null);
         if (idbVisitors && idbVisitors.length > 0 && isMounted) {
-          setVisitors(idbVisitors);
+          setVisitors(sortNewestFirst(idbVisitors));
         }
         const idbDaily = await idbGet<DailyReport[] | null>('lsms_dailyReports', null);
         if (idbDaily && idbDaily.length > 0 && isMounted) {
-          setDailyReports(idbDaily);
+          setDailyReports(sortNewestFirst(idbDaily));
         }
         const idbPatrol = await idbGet<PatrolLog[] | null>('lsms_patrolLogs', null);
         if (idbPatrol && idbPatrol.length > 0 && isMounted) {
-          setPatrolLogs(idbPatrol);
+          setPatrolLogs(sortNewestFirst(idbPatrol));
         }
         const idbIncidents = await idbGet<IncidentReport[] | null>('lsms_incidents', null);
         if (idbIncidents && idbIncidents.length > 0 && isMounted) {
-          setIncidents(idbIncidents);
+          setIncidents(sortNewestFirst(idbIncidents));
         }
         const idbLostFound = await idbGet<LostAndFound[] | null>('lsms_lostAndFound', null);
         if (idbLostFound && idbLostFound.length > 0 && isMounted) {
-          setLostAndFound(idbLostFound);
+          setLostAndFound(sortNewestFirst(idbLostFound));
         }
         const idbTitipan = await idbGet<BarangTitipan[] | null>('lsms_barangTitipan', null);
         if (idbTitipan && idbTitipan.length > 0 && isMounted) {
-          setBarangTitipan(idbTitipan);
+          setBarangTitipan(sortNewestFirst(idbTitipan));
         }
         const idbVehiclesLog = await idbGet<SchoolVehicleLog[] | null>('lsms_vehiclesLog', null);
         if (idbVehiclesLog && idbVehiclesLog.length > 0 && isMounted) {
-          setVehiclesLog(idbVehiclesLog);
+          setVehiclesLog(sortNewestFirst(idbVehiclesLog));
         }
       } catch (e) {
         console.warn('IndexedDB initial hydration note:', e);
@@ -306,13 +316,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (health.connected) {
           const pullRes = await pullAllFromSupabase();
           if (pullRes.success && pullRes.data && isMounted) {
-            if (pullRes.data.visitors?.length) setVisitors(pullRes.data.visitors);
-            if (pullRes.data.dailyReports?.length) setDailyReports(pullRes.data.dailyReports);
-            if (pullRes.data.patrolLogs?.length) setPatrolLogs(pullRes.data.patrolLogs);
-            if (pullRes.data.incidents?.length) setIncidents(pullRes.data.incidents);
-            if (pullRes.data.lostAndFound?.length) setLostAndFound(pullRes.data.lostAndFound);
-            if (pullRes.data.barangTitipan?.length) setBarangTitipan(pullRes.data.barangTitipan);
-            if (pullRes.data.vehiclesLog?.length) setVehiclesLog(pullRes.data.vehiclesLog);
+            if (pullRes.data.visitors?.length) setVisitors(sortNewestFirst(pullRes.data.visitors));
+            if (pullRes.data.dailyReports?.length) setDailyReports(sortNewestFirst(pullRes.data.dailyReports));
+            if (pullRes.data.patrolLogs?.length) setPatrolLogs(sortNewestFirst(pullRes.data.patrolLogs));
+            if (pullRes.data.incidents?.length) setIncidents(sortNewestFirst(pullRes.data.incidents));
+            if (pullRes.data.lostAndFound?.length) setLostAndFound(sortNewestFirst(pullRes.data.lostAndFound));
+            if (pullRes.data.barangTitipan?.length) setBarangTitipan(sortNewestFirst(pullRes.data.barangTitipan));
+            if (pullRes.data.vehiclesLog?.length) setVehiclesLog(sortNewestFirst(pullRes.data.vehiclesLog));
+            if (pullRes.data.auditLogs?.length) setAuditLogs(sortNewestFirst(pullRes.data.auditLogs));
             if (pullRes.data.staffList?.length) setStaffList(pullRes.data.staffList);
             if (pullRes.data.unitsList?.length) setUnitsList(pullRes.data.unitsList);
             if (pullRes.data.gedungList?.length) setGedungList(pullRes.data.gedungList);
@@ -337,7 +348,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Sync state changes to localStorage cache
   useEffect(() => setStorage('currentUser', currentUser), [currentUser]);
-  useEffect(() => setStorage('isAuthenticated', isAuthenticated), [isAuthenticated]);
+  // Catatan: isAuthenticated sengaja TIDAK disimpan di localStorage agar saat masuk web selalu membuka halaman Login
   useEffect(() => setStorage('usersList', usersList), [usersList]);
   useEffect(() => setStorage('loginPolicy', loginPolicy), [loginPolicy]);
   useEffect(() => setStorage('visitors', visitors), [visitors]);
@@ -360,16 +371,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Audit Logger helper
   const logAudit = useCallback((action: string, module: string, details: string) => {
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10);
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
     const newLog: AuditLog = {
-      id: `AUD-${Date.now().toString().slice(-6)}`,
-      timestamp: new Date().toLocaleString('id-ID'),
+      id: `AUD-${Date.now()}`,
+      timestamp: `${dateStr} ${timeStr}`,
       userName: currentUser.name || 'System',
       userRole: currentUser.role || 'User',
       action,
       module,
       details,
     };
-    setAuditLogs((prev) => [newLog, ...prev]);
+    setAuditLogs((prev) => sortNewestFirst([newLog, ...prev]));
     // Asynchronously upsert to Supabase
     supabaseUpsert(SUPABASE_TABLES.AUDIT_LOGS, mappers.auditLogToDb(newLog));
   }, [currentUser]);
@@ -419,13 +433,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const res = await pullAllFromSupabase();
       if (res.success && res.data) {
-        if (res.data.visitors?.length) setVisitors(res.data.visitors);
-        if (res.data.dailyReports?.length) setDailyReports(res.data.dailyReports);
-        if (res.data.patrolLogs?.length) setPatrolLogs(res.data.patrolLogs);
-        if (res.data.incidents?.length) setIncidents(res.data.incidents);
-        if (res.data.lostAndFound?.length) setLostAndFound(res.data.lostAndFound);
-        if (res.data.barangTitipan?.length) setBarangTitipan(res.data.barangTitipan);
-        if (res.data.vehiclesLog?.length) setVehiclesLog(res.data.vehiclesLog);
+        if (res.data.visitors?.length) setVisitors(sortNewestFirst(res.data.visitors));
+        if (res.data.dailyReports?.length) setDailyReports(sortNewestFirst(res.data.dailyReports));
+        if (res.data.patrolLogs?.length) setPatrolLogs(sortNewestFirst(res.data.patrolLogs));
+        if (res.data.incidents?.length) setIncidents(sortNewestFirst(res.data.incidents));
+        if (res.data.lostAndFound?.length) setLostAndFound(sortNewestFirst(res.data.lostAndFound));
+        if (res.data.barangTitipan?.length) setBarangTitipan(sortNewestFirst(res.data.barangTitipan));
+        if (res.data.vehiclesLog?.length) setVehiclesLog(sortNewestFirst(res.data.vehiclesLog));
+        if (res.data.auditLogs?.length) setAuditLogs(sortNewestFirst(res.data.auditLogs));
         if (res.data.staffList?.length) setStaffList(res.data.staffList);
         if (res.data.unitsList?.length) setUnitsList(res.data.unitsList);
         if (res.data.gedungList?.length) setGedungList(res.data.gedungList);
@@ -437,7 +452,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (res.data.loginPolicy) setLoginPolicy(res.data.loginPolicy);
         const nowStr = new Date().toLocaleTimeString('id-ID');
         setLastSupabaseSync(nowStr);
-        logAudit('SUPABASE_PULL_SYNC', 'Database Supabase', 'Tarik seluruh data dari Supabase Cloud');
+        logAudit('SUPABASE_PULL_SYNC', 'Database Supabase', 'Tarik seluruh data dari Supabase Cloud (Urutan Terkini)');
       }
       return { success: res.success, message: res.message };
     } finally {
@@ -503,6 +518,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...foundUser,
       lastLogin: new Date().toLocaleString('id-ID'),
     };
+    try {
+      sessionStorage.setItem('lsms_session_auth', 'true');
+    } catch {}
     setCurrentUser(updatedUser);
     setIsAuthenticated(true);
     setFailedAttempts(0);
@@ -514,6 +532,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const logout = () => {
+    try {
+      sessionStorage.removeItem('lsms_session_auth');
+      localStorage.removeItem('lsms_isAuthenticated');
+    } catch {}
     logAudit('LOGOUT', 'Sistem Otentikasi', `User ${currentUser.name} melakukan Logout.`);
     setIsAuthenticated(false);
   };
@@ -587,7 +609,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       durationMinutes: 0,
       isOverdueAlert: false,
     };
-    setVisitors((prev) => [newVisitor, ...prev]);
+    setVisitors((prev) => sortNewestFirst([newVisitor, ...prev]));
     supabaseUpsert(SUPABASE_TABLES.VISITORS, mappers.visitorToDb(newVisitor));
     logAudit('CHECK_IN_VISITOR', 'Visitor Management', `Check In Visitor: ${newVisitor.name} (${newVisitor.visitorNumber}) ke ${newVisitor.destinationUnit}`);
   };
@@ -635,13 +657,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Daily Report
   const addDailyReport = (reportData: Omit<DailyReport, 'id' | 'timestamp'>) => {
-    const timestamp = new Date().toLocaleString('id-ID');
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10);
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     const newReport: DailyReport = {
       ...reportData,
       id: `DLY-${Date.now()}`,
-      timestamp,
+      timestamp: `${dateStr} ${timeStr}`,
     };
-    setDailyReports((prev) => [newReport, ...prev]);
+    setDailyReports((prev) => sortNewestFirst([newReport, ...prev]));
     supabaseUpsert(SUPABASE_TABLES.DAILY_REPORTS, mappers.dailyReportToDb(newReport));
     logAudit('CREATE_DAILY_REPORT', 'Daily Security Report', `Laporan Harian Shift ${newReport.shift} Tanggal ${newReport.date}`);
   };
@@ -655,13 +679,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Patrol Log
   const addPatrolLog = (logData: Omit<PatrolLog, 'id' | 'timestamp'>) => {
-    const timestamp = new Date().toLocaleString('id-ID');
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10);
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
     const newPatrol: PatrolLog = {
       ...logData,
       id: `PTR-${Date.now()}`,
-      timestamp,
+      timestamp: `${dateStr} ${timeStr}`,
     };
-    setPatrolLogs((prev) => [newPatrol, ...prev]);
+    setPatrolLogs((prev) => sortNewestFirst([newPatrol, ...prev]));
     supabaseUpsert(SUPABASE_TABLES.PATROL_LOGS, mappers.patrolLogToDb(newPatrol));
     logAudit('SCAN_PATROL_QR', 'Patroli Security', `Scan QR Patroli di ${newPatrol.locationName} (${newPatrol.status})`);
   };
@@ -683,7 +709,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: `INC-${Date.now()}`,
       incidentNumber,
     };
-    setIncidents((prev) => [newIncident, ...prev]);
+    setIncidents((prev) => sortNewestFirst([newIncident, ...prev]));
     supabaseUpsert(SUPABASE_TABLES.INCIDENTS, mappers.incidentToDb(newIncident));
     logAudit('CREATE_INCIDENT', 'Laporan Insiden', `Laporan Insiden ${newIncident.category} (${newIncident.priority}) di ${newIncident.location}`);
 
@@ -729,7 +755,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...itemData,
       id: `LNF-${Date.now()}`,
     };
-    setLostAndFound((prev) => [newItem, ...prev]);
+    setLostAndFound((prev) => sortNewestFirst([newItem, ...prev]));
     supabaseUpsert(SUPABASE_TABLES.LOST_AND_FOUND, mappers.lostAndFoundToDb(newItem));
     logAudit('ADD_LOST_FOUND', 'Lost and Found', `Tambah data penemuan barang: ${newItem.itemName}`);
   };
@@ -769,7 +795,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: `TTP-${Date.now()}`,
       status: 'Dititipkan',
     };
-    setBarangTitipan((prev) => [newItem, ...prev]);
+    setBarangTitipan((prev) => sortNewestFirst([newItem, ...prev]));
     supabaseUpsert(SUPABASE_TABLES.BARANG_TITIPAN, mappers.barangTitipanToDb(newItem));
     logAudit('ADD_BARANG_TITIPAN', 'Penitipan Barang', `Penitipan barang baru dari ${newItem.ownerName}`);
   };
@@ -812,7 +838,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: `VLOG-${Date.now()}`,
       status: 'Masih Keluar',
     };
-    setVehiclesLog((prev) => [newLog, ...prev]);
+    setVehiclesLog((prev) => sortNewestFirst([newLog, ...prev]));
     supabaseUpsert(SUPABASE_TABLES.VEHICLE_LOGS, mappers.vehicleLogToDb(newLog));
     logAudit('LOG_VEHICLE_OUT', 'Kendaraan Sekolah', `Keberangkatan kendaraan ${newLog.vehicleName} driver ${newLog.driverName}`);
   };

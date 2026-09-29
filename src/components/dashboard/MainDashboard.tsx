@@ -1,5 +1,6 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
+import { sortNewestFirst } from '../../utils/sorting';
 import {
   Users,
   UserCheck,
@@ -51,7 +52,7 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({ setActiveMenu, set
 
   // Stats Calculations
   const visitorsToday = visitors.filter((v) => v.date === todayStr);
-  const activeVisitors = visitors.filter((v) => v.status === 'Masih di Sekolah');
+  const activeVisitors = sortNewestFirst(visitors.filter((v) => v.status === 'Masih di Sekolah'));
   const checkedOutVisitors = visitors.filter((v) => v.date === todayStr && v.status === 'Sudah Keluar');
   const overdueVisitors = activeVisitors.filter((v) => (v.durationMinutes || 0) > 240);
 

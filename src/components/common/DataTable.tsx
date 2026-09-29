@@ -11,6 +11,7 @@ import {
   Filter,
 } from 'lucide-react';
 import { exportToExcel, exportToPDF, printData, ExportColumn } from '../../utils/export';
+import { sortNewestFirst } from '../../utils/sorting';
 
 export interface Column<T> {
   header: string;
@@ -53,7 +54,7 @@ export function DataTable<T extends Record<string, any>>({
   searchFields,
   filterConfigs,
   defaultSortField,
-  defaultSortOrder = 'asc',
+  defaultSortOrder = 'desc',
   actions,
   exportFilename = 'Laporan_LSMS',
 }: DataTableProps<T>) {
@@ -95,9 +96,11 @@ export function DataTable<T extends Record<string, any>>({
     });
   }, [data, searchTerm, searchFields, filterConfigs, selectedFilters]);
 
-  // Sorting Logic
+  // Sorting Logic - selalu memastikan data terbaru di urutan pertama (paling atas)
   const sortedData = useMemo(() => {
-    if (!sortField) return filteredData;
+    if (!sortField) {
+      return sortNewestFirst(filteredData);
+    }
 
     return [...filteredData].sort((a, b) => {
       const valA = a[sortField];
@@ -128,10 +131,10 @@ export function DataTable<T extends Record<string, any>>({
 
   const handleSort = (fieldKey: string) => {
     if (sortField === fieldKey) {
-      setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+      setSortOrder((prev) => (prev === 'desc' ? 'asc' : 'desc'));
     } else {
       setSortField(fieldKey);
-      setSortOrder('asc');
+      setSortOrder('desc');
     }
   };
 
