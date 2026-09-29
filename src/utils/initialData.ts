@@ -64,7 +64,7 @@ export const initialUsers: User[] = [
     phone: '081512345678',
     unit: 'Security Pos Utama',
     password: 'user123',
-    pin: '112233',
+    pin: '123456',
     status: 'Aktif',
     lastLogin: `${today} 06:45`,
   },

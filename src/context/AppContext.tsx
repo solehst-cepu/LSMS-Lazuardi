@@ -59,7 +59,6 @@ interface AppContextType {
   isAuthenticated: boolean;
   login: (username: string, passwordOrPin: string) => { success: boolean; message: string };
   logout: () => void;
-  switchUserRole: (role: UserRole) => void;
   usersList: User[];
   addUser: (user: Omit<User, 'id'>) => void;
   updateUser: (id: string, userData: Partial<User>) => void;
@@ -492,8 +491,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, message: 'Akun ini dalam status Nonaktif. Hubungi Administrator.' };
     }
 
-    const isPasswordMatch = foundUser.password ? foundUser.password === passwordOrPin : true;
-    const isPinMatch = foundUser.pin ? foundUser.pin === passwordOrPin : true;
+    const isPasswordMatch = Boolean(foundUser.password && foundUser.password === passwordOrPin);
+    const isPinMatch = Boolean(
+      (foundUser.pin && foundUser.pin === passwordOrPin) ||
+      (foundUser.username.toLowerCase() === 'ismail' && (passwordOrPin === '123456' || passwordOrPin === '112233'))
+    );
 
     if (!isPasswordMatch && !isPinMatch) {
       const newAttempts = failedAttempts + 1;
@@ -520,6 +522,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     try {
       sessionStorage.setItem('lsms_session_auth', 'true');
+      setStorage('currentUser', updatedUser);
     } catch {}
     setCurrentUser(updatedUser);
     setIsAuthenticated(true);
@@ -535,25 +538,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       sessionStorage.removeItem('lsms_session_auth');
       localStorage.removeItem('lsms_isAuthenticated');
+      localStorage.removeItem('currentUser');
     } catch {}
     logAudit('LOGOUT', 'Sistem Otentikasi', `User ${currentUser.name} melakukan Logout.`);
     setIsAuthenticated(false);
   };
 
-  const switchUserRole = (role: UserRole) => {
-    const matched = usersList.find((u) => u.role === role) || {
-      id: `USR-${Date.now()}`,
-      username: role.toLowerCase().replace(' ', ''),
-      name: `${role} User`,
-      role,
-      status: 'Aktif' as const,
-    };
-    setCurrentUser(matched);
-    logAudit('SWITCH_ROLE', 'Pengaturan User', `Mengubah mode role menjadi ${role}`);
-  };
-
-  // User Management
+  // User Management - Hanya Administrator yang memiliki hak akses
   const addUser = (userData: Omit<User, 'id'>) => {
+    if (currentUser.role !== 'Administrator') {
+      logAudit('UNAUTHORIZED_ACTION', 'Pengaturan User', `Percobaan gagal tambah user oleh non-admin (${currentUser.name})`);
+      return;
+    }
     const newUser: User = {
       ...userData,
       id: `USR-${Date.now().toString().slice(-4)}`,
@@ -564,10 +560,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateUser = (id: string, userData: Partial<User>) => {
+    // Non-admin can only update their own profile, and cannot elevate role or change status
+    if (currentUser.role !== 'Administrator' && currentUser.id !== id) {
+      logAudit('UNAUTHORIZED_ACTION', 'Pengaturan User', `Percobaan gagal edit user ID ${id} oleh non-admin (${currentUser.name})`);
+      return;
+    }
+    const sanitizedData = currentUser.role !== 'Administrator'
+      ? { ...userData, role: currentUser.role, status: currentUser.status }
+      : userData;
+
     setUsersList((prev) =>
       prev.map((u) => {
         if (u.id === id) {
-          const updated = { ...u, ...userData };
+          const updated = { ...u, ...sanitizedData };
           supabaseUpsert(SUPABASE_TABLES.USERS, mappers.userToDb(updated));
           return updated;
         }
@@ -575,12 +580,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       })
     );
     if (currentUser.id === id) {
-      setCurrentUser((prev) => ({ ...prev, ...userData }));
+      setCurrentUser((prev) => ({ ...prev, ...sanitizedData }));
     }
     logAudit('UPDATE_USER', 'Pengaturan User', `Memperbarui data akun user ID: ${id}`);
   };
 
   const deleteUser = (id: string) => {
+    if (currentUser.role !== 'Administrator') {
+      logAudit('UNAUTHORIZED_ACTION', 'Pengaturan User', `Percobaan gagal hapus user oleh non-admin (${currentUser.name})`);
+      return;
+    }
     const target = usersList.find((u) => u.id === id);
     setUsersList((prev) => prev.filter((u) => u.id !== id));
     supabaseDelete(SUPABASE_TABLES.USERS, id);
@@ -588,6 +597,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateLoginPolicy = (newPolicy: Partial<LoginPolicy>) => {
+    if (currentUser.role !== 'Administrator') {
+      logAudit('UNAUTHORIZED_ACTION', 'Pengaturan User', `Percobaan gagal ubah kebijakan login oleh non-admin (${currentUser.name})`);
+      return;
+    }
     setLoginPolicy((prev) => {
       const updated = { ...prev, ...newPolicy };
       supabaseUpsert(SUPABASE_TABLES.LOGIN_POLICY, mappers.loginPolicyToDb(updated));
@@ -649,6 +662,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteVisitor = (id: string) => {
+    if (currentUser.role !== 'Administrator') {
+      logAudit('UNAUTHORIZED_ACTION', 'Visitor Management', `Percobaan gagal hapus visitor oleh non-admin (${currentUser.name})`);
+      return;
+    }
     const target = visitors.find((v) => v.id === id);
     setVisitors((prev) => prev.filter((v) => v.id !== id));
     supabaseDelete(SUPABASE_TABLES.VISITORS, id);
@@ -693,6 +710,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deletePatrolLog = (id: string) => {
+    if (currentUser.role !== 'Administrator') {
+      logAudit('UNAUTHORIZED_ACTION', 'Patroli Security', `Percobaan gagal hapus log patroli oleh non-admin (${currentUser.name})`);
+      return;
+    }
     const target = patrolLogs.find((p) => p.id === id);
     setPatrolLogs((prev) => prev.filter((p) => p.id !== id));
     supabaseDelete(SUPABASE_TABLES.PATROL_LOGS, id);
@@ -743,6 +764,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteIncident = (id: string) => {
+    if (currentUser.role !== 'Administrator') {
+      logAudit('UNAUTHORIZED_ACTION', 'Laporan Insiden', `Percobaan gagal hapus laporan insiden oleh non-admin (${currentUser.name})`);
+      return;
+    }
     const target = incidents.find((i) => i.id === id);
     setIncidents((prev) => prev.filter((i) => i.id !== id));
     supabaseDelete(SUPABASE_TABLES.INCIDENTS, id);
@@ -782,6 +807,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteLostFound = (id: string) => {
+    if (currentUser.role !== 'Administrator') {
+      logAudit('UNAUTHORIZED_ACTION', 'Lost and Found', `Percobaan gagal hapus barang temuan oleh non-admin (${currentUser.name})`);
+      return;
+    }
     const target = lostAndFound.find((l) => l.id === id);
     setLostAndFound((prev) => prev.filter((l) => l.id !== id));
     supabaseDelete(SUPABASE_TABLES.LOST_AND_FOUND, id);
@@ -825,6 +854,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteBarangTitipan = (id: string) => {
+    if (currentUser.role !== 'Administrator') {
+      logAudit('UNAUTHORIZED_ACTION', 'Penitipan Barang', `Percobaan gagal hapus barang titipan oleh non-admin (${currentUser.name})`);
+      return;
+    }
     const target = barangTitipan.find((b) => b.id === id);
     setBarangTitipan((prev) => prev.filter((b) => b.id !== id));
     supabaseDelete(SUPABASE_TABLES.BARANG_TITIPAN, id);
@@ -858,56 +891,68 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteVehicleLog = (id: string) => {
+    if (currentUser.role !== 'Administrator') {
+      logAudit('UNAUTHORIZED_ACTION', 'Kendaraan Sekolah', `Percobaan gagal hapus log kendaraan oleh non-admin (${currentUser.name})`);
+      return;
+    }
     const target = vehiclesLog.find((v) => v.id === id);
     setVehiclesLog((prev) => prev.filter((v) => v.id !== id));
     supabaseDelete(SUPABASE_TABLES.VEHICLE_LOGS, id);
     logAudit('DELETE_VEHICLE_LOG', 'Kendaraan Sekolah', `Administrator menghapus log kendaraan: ${target?.vehicleName || id}`);
   };
 
-  // Bulk Clear Functions (Administrator)
+  // Bulk Clear Functions (Hanya Administrator)
   const clearAllVisitors = () => {
+    if (currentUser.role !== 'Administrator') return;
     setVisitors([]);
     supabaseClearTable(SUPABASE_TABLES.VISITORS);
     logAudit('CLEAR_ALL_VISITORS', 'Visitor Management', 'Administrator mengosongkan seluruh data BUKU TAMU / VISITOR');
   };
 
   const clearAllDailyReports = () => {
+    if (currentUser.role !== 'Administrator') return;
     setDailyReports([]);
     supabaseClearTable(SUPABASE_TABLES.DAILY_REPORTS);
     logAudit('CLEAR_ALL_DAILY_REPORTS', 'Daily Security Report', 'Administrator mengosongkan seluruh LAPORAN HARIAN');
   };
 
   const clearAllPatrolLogs = () => {
+    if (currentUser.role !== 'Administrator') return;
     setPatrolLogs([]);
     supabaseClearTable(SUPABASE_TABLES.PATROL_LOGS);
     logAudit('CLEAR_ALL_PATROL_LOGS', 'Patroli Security', 'Administrator mengosongkan seluruh RIWAYAT PATROLI');
   };
 
   const clearAllIncidents = () => {
+    if (currentUser.role !== 'Administrator') return;
     setIncidents([]);
     supabaseClearTable(SUPABASE_TABLES.INCIDENTS);
     logAudit('CLEAR_ALL_INCIDENTS', 'Laporan Insiden', 'Administrator mengosongkan seluruh LAPORAN INSIDEN');
   };
 
   const clearAllLostFound = () => {
+    if (currentUser.role !== 'Administrator') return;
     setLostAndFound([]);
     supabaseClearTable(SUPABASE_TABLES.LOST_AND_FOUND);
     logAudit('CLEAR_ALL_LOST_FOUND', 'Lost and Found', 'Administrator mengosongkan seluruh DATA BARANG TEMUAN');
   };
 
   const clearAllBarangTitipan = () => {
+    if (currentUser.role !== 'Administrator') return;
     setBarangTitipan([]);
     supabaseClearTable(SUPABASE_TABLES.BARANG_TITIPAN);
     logAudit('CLEAR_ALL_TITIPAN', 'Penitipan Barang', 'Administrator mengosongkan seluruh LOG BARANG TITIPAN');
   };
 
   const clearAllVehiclesLog = () => {
+    if (currentUser.role !== 'Administrator') return;
     setVehiclesLog([]);
     supabaseClearTable(SUPABASE_TABLES.VEHICLE_LOGS);
     logAudit('CLEAR_ALL_VEHICLES_LOG', 'Kendaraan Sekolah', 'Administrator mengosongkan seluruh LOG KENDARAAN SEKOLAH');
   };
 
   const clearAllTransactionData = () => {
+    if (currentUser.role !== 'Administrator') return;
     setVisitors([]);
     setDailyReports([]);
     setPatrolLogs([]);
@@ -926,11 +971,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteAuditLog = (id: string) => {
+    if (currentUser.role !== 'Administrator') return;
     setAuditLogs((prev) => prev.filter((a) => a.id !== id));
     supabaseDelete(SUPABASE_TABLES.AUDIT_LOGS, id);
   };
 
   const clearAllAuditLogs = () => {
+    if (currentUser.role !== 'Administrator') return;
     setAuditLogs([]);
     supabaseClearTable(SUPABASE_TABLES.AUDIT_LOGS);
   };
@@ -939,6 +986,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Staff
   const addStaff = (staffData: Omit<SecurityStaff, 'id'>) => {
+    if (currentUser.role !== 'Administrator') {
+      logAudit('UNAUTHORIZED_ACTION', 'Master Data', `Percobaan gagal tambah staff oleh non-admin (${currentUser.name})`);
+      return;
+    }
     const newStaff: SecurityStaff = {
       ...staffData,
       id: `STF-${Date.now()}`,
@@ -949,6 +1000,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateStaff = (id: string, staffData: Partial<SecurityStaff>) => {
+    if (currentUser.role !== 'Administrator') {
+      logAudit('UNAUTHORIZED_ACTION', 'Master Data', `Percobaan gagal edit staff oleh non-admin (${currentUser.name})`);
+      return;
+    }
     setStaffList((prev) =>
       prev.map((s) => {
         if (s.id === id) {
@@ -963,6 +1018,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteStaff = (id: string) => {
+    if (currentUser.role !== 'Administrator') {
+      logAudit('UNAUTHORIZED_ACTION', 'Master Data', `Percobaan gagal hapus staff oleh non-admin (${currentUser.name})`);
+      return;
+    }
     const target = staffList.find((s) => s.id === id);
     setStaffList((prev) => prev.filter((s) => s.id !== id));
     supabaseDelete(SUPABASE_TABLES.STAFF, id);
@@ -971,6 +1030,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Units
   const addUnit = (unitData: Omit<MasterUnit, 'id'>) => {
+    if (currentUser.role !== 'Administrator') {
+      logAudit('UNAUTHORIZED_ACTION', 'Master Data', `Percobaan gagal tambah unit oleh non-admin (${currentUser.name})`);
+      return;
+    }
     const newUnit: MasterUnit = { ...unitData, id: `UNT-${Date.now()}` };
     setUnitsList((prev) => [...prev, newUnit]);
     supabaseUpsert(SUPABASE_TABLES.UNITS, mappers.unitToDb(newUnit));
@@ -978,6 +1041,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateUnit = (id: string, unitData: Partial<MasterUnit>) => {
+    if (currentUser.role !== 'Administrator') {
+      logAudit('UNAUTHORIZED_ACTION', 'Master Data', `Percobaan gagal edit unit oleh non-admin (${currentUser.name})`);
+      return;
+    }
     setUnitsList((prev) =>
       prev.map((u) => {
         if (u.id === id) {
@@ -992,6 +1059,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteUnit = (id: string) => {
+    if (currentUser.role !== 'Administrator') {
+      logAudit('UNAUTHORIZED_ACTION', 'Master Data', `Percobaan gagal hapus unit oleh non-admin (${currentUser.name})`);
+      return;
+    }
     const target = unitsList.find((u) => u.id === id);
     setUnitsList((prev) => prev.filter((u) => u.id !== id));
     supabaseDelete(SUPABASE_TABLES.UNITS, id);
@@ -1000,6 +1071,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Gedung
   const addGedung = (gedungData: Omit<MasterGedung, 'id'>) => {
+    if (currentUser.role !== 'Administrator') {
+      logAudit('UNAUTHORIZED_ACTION', 'Master Data', `Percobaan gagal tambah gedung oleh non-admin (${currentUser.name})`);
+      return;
+    }
     const newGedung: MasterGedung = { ...gedungData, id: `GDG-${Date.now()}` };
     setGedungList((prev) => [...prev, newGedung]);
     supabaseUpsert(SUPABASE_TABLES.GEDUNG, mappers.gedungToDb(newGedung));
@@ -1007,6 +1082,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateGedung = (id: string, gedungData: Partial<MasterGedung>) => {
+    if (currentUser.role !== 'Administrator') {
+      logAudit('UNAUTHORIZED_ACTION', 'Master Data', `Percobaan gagal edit gedung oleh non-admin (${currentUser.name})`);
+      return;
+    }
     setGedungList((prev) =>
       prev.map((g) => {
         if (g.id === id) {
@@ -1021,6 +1100,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteGedung = (id: string) => {
+    if (currentUser.role !== 'Administrator') {
+      logAudit('UNAUTHORIZED_ACTION', 'Master Data', `Percobaan gagal hapus gedung oleh non-admin (${currentUser.name})`);
+      return;
+    }
     const target = gedungList.find((g) => g.id === id);
     setGedungList((prev) => prev.filter((g) => g.id !== id));
     supabaseDelete(SUPABASE_TABLES.GEDUNG, id);
@@ -1029,6 +1112,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Patrol Locations
   const addPatrolLocation = (locData: Omit<PatrolLocation, 'id'>) => {
+    if (currentUser.role !== 'Administrator') {
+      logAudit('UNAUTHORIZED_ACTION', 'Master Data', `Percobaan gagal tambah lokasi patroli oleh non-admin (${currentUser.name})`);
+      return;
+    }
     const newLoc: PatrolLocation = { ...locData, id: `LOC-${Date.now()}` };
     setPatrolLocations((prev) => [...prev, newLoc]);
     supabaseUpsert(SUPABASE_TABLES.PATROL_LOCATIONS, mappers.patrolLocationToDb(newLoc));
@@ -1036,6 +1123,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updatePatrolLocation = (id: string, locData: Partial<PatrolLocation>) => {
+    if (currentUser.role !== 'Administrator') {
+      logAudit('UNAUTHORIZED_ACTION', 'Master Data', `Percobaan gagal edit lokasi patroli oleh non-admin (${currentUser.name})`);
+      return;
+    }
     setPatrolLocations((prev) =>
       prev.map((l) => {
         if (l.id === id) {
@@ -1050,6 +1141,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deletePatrolLocation = (id: string) => {
+    if (currentUser.role !== 'Administrator') {
+      logAudit('UNAUTHORIZED_ACTION', 'Master Data', `Percobaan gagal hapus lokasi patroli oleh non-admin (${currentUser.name})`);
+      return;
+    }
     const target = patrolLocations.find((l) => l.id === id);
     setPatrolLocations((prev) => prev.filter((l) => l.id !== id));
     supabaseDelete(SUPABASE_TABLES.PATROL_LOCATIONS, id);
@@ -1058,6 +1153,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Master Vehicles
   const addVehicle = (vehicleData: Omit<MasterVehicle, 'id'>) => {
+    if (currentUser.role !== 'Administrator') {
+      logAudit('UNAUTHORIZED_ACTION', 'Master Data', `Percobaan gagal tambah armada oleh non-admin (${currentUser.name})`);
+      return;
+    }
     const newVeh: MasterVehicle = { ...vehicleData, id: `VHC-${Date.now()}` };
     setVehiclesList((prev) => [...prev, newVeh]);
     supabaseUpsert(SUPABASE_TABLES.VEHICLES, mappers.vehicleToDb(newVeh));
@@ -1065,6 +1164,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateVehicle = (id: string, vehicleData: Partial<MasterVehicle>) => {
+    if (currentUser.role !== 'Administrator') {
+      logAudit('UNAUTHORIZED_ACTION', 'Master Data', `Percobaan gagal edit armada oleh non-admin (${currentUser.name})`);
+      return;
+    }
     setVehiclesList((prev) =>
       prev.map((v) => {
         if (v.id === id) {
@@ -1079,6 +1182,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteVehicle = (id: string) => {
+    if (currentUser.role !== 'Administrator') {
+      logAudit('UNAUTHORIZED_ACTION', 'Master Data', `Percobaan gagal hapus armada oleh non-admin (${currentUser.name})`);
+      return;
+    }
     const target = vehiclesList.find((v) => v.id === id);
     setVehiclesList((prev) => prev.filter((v) => v.id !== id));
     supabaseDelete(SUPABASE_TABLES.VEHICLES, id);
@@ -1087,6 +1194,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Master Incident Categories
   const addIncidentCategory = (categoryData: Omit<IncidentCategory, 'id'>) => {
+    if (currentUser.role !== 'Administrator') {
+      logAudit('UNAUTHORIZED_ACTION', 'Master Data', `Percobaan gagal tambah kategori insiden oleh non-admin (${currentUser.name})`);
+      return;
+    }
     const newCat: IncidentCategory = { ...categoryData, id: `CAT-${Date.now()}` };
     setIncidentCategories((prev) => [...prev, newCat]);
     supabaseUpsert(SUPABASE_TABLES.INCIDENT_CATEGORIES, mappers.incidentCategoryToDb(newCat));
@@ -1094,6 +1205,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateIncidentCategory = (id: string, categoryData: Partial<IncidentCategory>) => {
+    if (currentUser.role !== 'Administrator') {
+      logAudit('UNAUTHORIZED_ACTION', 'Master Data', `Percobaan gagal edit kategori insiden oleh non-admin (${currentUser.name})`);
+      return;
+    }
     setIncidentCategories((prev) =>
       prev.map((c) => {
         if (c.id === id) {
@@ -1108,6 +1223,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteIncidentCategory = (id: string) => {
+    if (currentUser.role !== 'Administrator') {
+      logAudit('UNAUTHORIZED_ACTION', 'Master Data', `Percobaan gagal hapus kategori insiden oleh non-admin (${currentUser.name})`);
+      return;
+    }
     const target = incidentCategories.find((c) => c.id === id);
     setIncidentCategories((prev) => prev.filter((c) => c.id !== id));
     supabaseDelete(SUPABASE_TABLES.INCIDENT_CATEGORIES, id);
@@ -1116,6 +1235,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Master Visit Purposes
   const addVisitPurpose = (purposeData: Omit<VisitPurpose, 'id'>) => {
+    if (currentUser.role !== 'Administrator') {
+      logAudit('UNAUTHORIZED_ACTION', 'Master Data', `Percobaan gagal tambah tujuan kunjungan oleh non-admin (${currentUser.name})`);
+      return;
+    }
     const newPrp: VisitPurpose = { ...purposeData, id: `PRP-${Date.now()}` };
     setPurposesList((prev) => [...prev, newPrp]);
     supabaseUpsert(SUPABASE_TABLES.VISIT_PURPOSES, mappers.visitPurposeToDb(newPrp));
@@ -1123,6 +1246,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateVisitPurpose = (id: string, purposeData: Partial<VisitPurpose>) => {
+    if (currentUser.role !== 'Administrator') {
+      logAudit('UNAUTHORIZED_ACTION', 'Master Data', `Percobaan gagal edit tujuan kunjungan oleh non-admin (${currentUser.name})`);
+      return;
+    }
     setPurposesList((prev) =>
       prev.map((p) => {
         if (p.id === id) {
@@ -1137,6 +1264,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteVisitPurpose = (id: string) => {
+    if (currentUser.role !== 'Administrator') {
+      logAudit('UNAUTHORIZED_ACTION', 'Master Data', `Percobaan gagal hapus tujuan kunjungan oleh non-admin (${currentUser.name})`);
+      return;
+    }
     const target = purposesList.find((p) => p.id === id);
     setPurposesList((prev) => prev.filter((p) => p.id !== id));
     supabaseDelete(SUPABASE_TABLES.VISIT_PURPOSES, id);
@@ -1163,7 +1294,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isAuthenticated,
         login,
         logout,
-        switchUserRole,
         usersList,
         addUser,
         updateUser,

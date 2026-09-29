@@ -83,15 +83,19 @@ export const AuditLogComponent: React.FC = () => {
         columns={columns}
         searchPlaceholder="Cari user, aksi, modul, atau detail..."
         exportFilename="Audit_Log_LSMS"
-        actions={(row) => (
-          <button
-            onClick={() => setLogToDelete(row)}
-            className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-            title="Hapus Audit Log"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        )}
+        actions={
+          currentUser.role === 'Administrator'
+            ? (row) => (
+                <button
+                  onClick={() => setLogToDelete(row)}
+                  className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                  title="Hapus Audit Log"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )
+            : undefined
+        }
       />
 
       <ConfirmModal

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
+import { AlertOctagon } from 'lucide-react';
 
 import { LoginScreen } from './components/auth/LoginScreen';
 import { MainDashboard } from './components/dashboard/MainDashboard';
@@ -20,13 +21,31 @@ import { AuditLogComponent } from './components/audit/AuditLogComponent';
 import { UserSettingsComponent } from './components/users/UserSettingsComponent';
 
 const AppContent: React.FC = () => {
-  const { isAuthenticated } = useApp();
+  const { isAuthenticated, currentUser } = useApp();
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
 
   if (!isAuthenticated) {
     return <LoginScreen />;
   }
+
+  const renderAccessDenied = (title: string, message: string) => (
+    <div className="bg-white p-8 rounded-2xl border border-rose-200 shadow-sm text-center max-w-md mx-auto my-12">
+      <div className="w-14 h-14 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm">
+        <AlertOctagon className="w-7 h-7" />
+      </div>
+      <h2 className="text-base font-bold text-slate-900 mb-1.5">{title}</h2>
+      <p className="text-xs text-slate-600 mb-6 leading-relaxed">
+        {message}
+      </p>
+      <button
+        onClick={() => setActiveTab('dashboard')}
+        className="px-5 py-2.5 bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs rounded-xl shadow-sm transition-colors cursor-pointer"
+      >
+        Kembali ke Dashboard
+      </button>
+    </div>
+  );
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -53,13 +72,31 @@ const AppContent: React.FC = () => {
       case 'school-vehicles':
         return <SchoolVehiclesComponent />;
       case 'master-data':
+        if (currentUser.role === 'User') {
+          return renderAccessDenied(
+            'Akses Master Data Ditolak',
+            `Akun Anda (${currentUser.name}) memiliki role ${currentUser.role}. Master Data hanya dapat diakses oleh Administrator dan Supervisor.`
+          );
+        }
         return <MasterDataComponent />;
       case 'users':
+        if (currentUser.role !== 'Administrator') {
+          return renderAccessDenied(
+            'Akses Pengaturan User Ditolak',
+            `Akun Anda (${currentUser.name}) memiliki role ${currentUser.role}. Halaman Pengaturan User & Kebijakan Login hanya dapat diakses dan diubah oleh Administrator.`
+          );
+        }
         return <UserSettingsComponent />;
       case 'reports':
       case 'reports-export':
         return <ReportsCenter />;
       case 'audit-log':
+        if (currentUser.role === 'User') {
+          return renderAccessDenied(
+            'Akses Audit Log Ditolak',
+            `Akun Anda (${currentUser.name}) memiliki role ${currentUser.role}. Audit Log hanya dapat dilihat oleh Administrator dan Supervisor.`
+          );
+        }
         return <AuditLogComponent />;
       default:
         return <MainDashboard setActiveMenu={setActiveTab} />;

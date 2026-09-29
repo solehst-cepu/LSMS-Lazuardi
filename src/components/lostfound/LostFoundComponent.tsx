@@ -228,20 +228,22 @@ export const LostFoundComponent: React.FC = () => {
               {row.status === 'Belum Diambil' && (
                 <button
                   onClick={() => setSelectedItem(row)}
-                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg shadow-xs transition-colors flex items-center gap-1"
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg shadow-xs transition-colors flex items-center gap-1 cursor-pointer"
                 >
                   <UserCheck className="w-3.5 h-3.5" />
                   <span>Serahkan Barang</span>
                 </button>
               )}
 
-              <button
-                onClick={() => setItemToDelete(row)}
-                className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                title="Hapus Data Barang"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+              {currentUser.role === 'Administrator' && (
+                <button
+                  onClick={() => setItemToDelete(row)}
+                  className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                  title="Hapus Data Barang"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
             </div>
           )}
         />

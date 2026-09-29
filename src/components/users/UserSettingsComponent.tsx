@@ -277,6 +277,23 @@ export const UserSettingsComponent: React.FC = () => {
     },
   ];
 
+  if (currentUser.role !== 'Administrator') {
+    return (
+      <div className="bg-white p-8 rounded-2xl border border-rose-200 shadow-sm text-center max-w-md mx-auto my-12">
+        <div className="w-14 h-14 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm">
+          <AlertOctagon className="w-7 h-7" />
+        </div>
+        <h2 className="text-base font-bold text-slate-900 mb-1.5">Akses Ditolak (Unauthorized)</h2>
+        <p className="text-xs text-slate-600 mb-4 leading-relaxed">
+          Akun Anda ({currentUser.name}) terdaftar dengan hak akses <strong>{currentUser.role}</strong>. Anda tidak memiliki izin untuk melihat atau mengubah pengaturan user dan kebijakan login sistem.
+        </p>
+        <span className="inline-block px-3 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold">
+          Hubungi Administrator Sistem untuk bantuan pengelolaan akun.
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Title Banner */}

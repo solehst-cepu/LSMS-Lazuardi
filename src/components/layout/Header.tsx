@@ -87,19 +87,29 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Center Section: Realtime Digital Clock & Supabase Status */}
         <div className="hidden md:flex items-center gap-3">
-          <button
-            onClick={() => setActiveMenu('master-data')}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+          <div
+            onClick={() => {
+              if (currentUser.role !== 'User') {
+                setActiveMenu('master-data');
+              }
+            }}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all ${
+              currentUser.role !== 'User' ? 'cursor-pointer hover:bg-emerald-100' : 'cursor-default'
+            } ${
               isSupabaseOnline
-                ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
-                : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                : 'bg-amber-50 text-amber-800 border-amber-200'
             }`}
-            title="Klik untuk membuka Pengaturan Database Supabase"
+            title={
+              currentUser.role !== 'User'
+                ? 'Klik untuk membuka Pengaturan Master Data & Database'
+                : 'Status Koneksi Database Supabase'
+            }
           >
             <Cloud className="w-3.5 h-3.5 text-emerald-600" />
             <span>Supabase DB</span>
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          </button>
+          </div>
 
           <div className="flex items-center gap-2 px-3 py-1 bg-slate-100 rounded-lg text-xs font-semibold text-slate-700 border border-slate-200">
             <Clock className="w-3.5 h-3.5 text-blue-600 animate-pulse" />
@@ -109,7 +119,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Right Section: Role Switcher, Notifications, User Profile */}
+        {/* Right Section: Notifications & User Profile */}
         <div className="flex items-center gap-3">
           {/* Notifications Dropdown */}
           <div className="relative">
@@ -204,26 +214,30 @@ export const Header: React.FC<HeaderProps> = ({
                 </div>
 
                 <div className="mt-1 px-2 space-y-1">
-                  <button
-                    onClick={() => {
-                      setActiveMenu('users');
-                      setShowUserMenu(false);
-                    }}
-                    className="w-full text-left px-2.5 py-1.5 text-xs text-slate-700 hover:text-blue-700 hover:bg-slate-50 rounded-lg flex items-center gap-2 font-medium transition-colors cursor-pointer"
-                  >
-                    <UserCog className="w-3.5 h-3.5 text-blue-600" />
-                    <span>Pengaturan User</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setActiveMenu('audit-log');
-                      setShowUserMenu(false);
-                    }}
-                    className="w-full text-left px-2.5 py-1.5 text-xs text-slate-700 hover:text-blue-700 hover:bg-slate-50 rounded-lg flex items-center gap-2 font-medium transition-colors cursor-pointer"
-                  >
-                    <History className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Lihat Audit Log</span>
-                  </button>
+                  {currentUser.role === 'Administrator' && (
+                    <button
+                      onClick={() => {
+                        setActiveMenu('users');
+                        setShowUserMenu(false);
+                      }}
+                      className="w-full text-left px-2.5 py-1.5 text-xs text-slate-700 hover:text-blue-700 hover:bg-slate-50 rounded-lg flex items-center gap-2 font-medium transition-colors cursor-pointer"
+                    >
+                      <UserCog className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Pengaturan User</span>
+                    </button>
+                  )}
+                  {currentUser.role !== 'User' && (
+                    <button
+                      onClick={() => {
+                        setActiveMenu('audit-log');
+                        setShowUserMenu(false);
+                      }}
+                      className="w-full text-left px-2.5 py-1.5 text-xs text-slate-700 hover:text-blue-700 hover:bg-slate-50 rounded-lg flex items-center gap-2 font-medium transition-colors cursor-pointer"
+                    >
+                      <History className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Lihat Audit Log</span>
+                    </button>
+                  )}
                   <button
                     onClick={() => {
                       logout();

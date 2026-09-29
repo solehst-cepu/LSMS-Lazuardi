@@ -108,10 +108,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
           id: 'users',
           label: 'Pengaturan User & Login',
           icon: UserCog,
-          roleRequired: ['Administrator', 'Supervisor Security'],
+          roleRequired: ['Administrator'],
         },
         { id: 'reports-export', label: 'Pusat Laporan', icon: FileSpreadsheet },
-        { id: 'audit-log', label: 'Audit Log System', icon: History },
+        {
+          id: 'audit-log',
+          label: 'Audit Log System',
+          icon: History,
+          roleRequired: ['Administrator', 'Supervisor Security'],
+        },
       ],
     },
   ];

@@ -20,6 +20,7 @@ import {
 
 export const MasterDataComponent: React.FC = () => {
   const {
+    currentUser,
     staffList,
     addStaff,
     updateStaff,
@@ -411,7 +412,13 @@ export const MasterDataComponent: React.FC = () => {
     },
   ];
 
+  const filterColumns = <T extends any>(cols: Column<T>[]): Column<T>[] => {
+    if (currentUser.role === 'Administrator') return cols;
+    return cols.filter((c) => c.key !== 'actions');
+  };
+
   const handleCreateNewClick = () => {
+    if (currentUser.role !== 'Administrator') return;
     if (activeMasterTab === 'staff') openStaffModal();
     else if (activeMasterTab === 'units') openUnitModal();
     else if (activeMasterTab === 'gedung') openGedungModal();
@@ -435,13 +442,15 @@ export const MasterDataComponent: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={handleCreateNewClick}
-          className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Tambah Data Master</span>
-        </button>
+        {currentUser.role === 'Administrator' && activeMasterTab !== 'database' && (
+          <button
+            onClick={handleCreateNewClick}
+            className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Tambah Data Master</span>
+          </button>
+        )}
       </div>
 
       {/* SUB MENU TABS */}
@@ -481,7 +490,7 @@ export const MasterDataComponent: React.FC = () => {
         <DataTable
           title="Master Data Staff Security LSMS"
           data={staffList}
-          columns={staffColumns}
+          columns={filterColumns(staffColumns)}
           searchPlaceholder="Cari nama staff, NIP, atau jabatan..."
           exportFilename="Master_Staff_Security_LSMS"
         />
@@ -491,7 +500,7 @@ export const MasterDataComponent: React.FC = () => {
         <DataTable
           title="Master Data Unit Sekolah LSMS"
           data={unitsList}
-          columns={unitColumns}
+          columns={filterColumns(unitColumns)}
           searchPlaceholder="Cari nama unit atau kode..."
           exportFilename="Master_Unit_LSMS"
         />
@@ -501,7 +510,7 @@ export const MasterDataComponent: React.FC = () => {
         <DataTable
           title="Master Data Gedung LSMS"
           data={gedungList}
-          columns={gedungColumns}
+          columns={filterColumns(gedungColumns)}
           searchPlaceholder="Cari nama gedung..."
           exportFilename="Master_Gedung_LSMS"
         />
@@ -511,7 +520,7 @@ export const MasterDataComponent: React.FC = () => {
         <DataTable
           title="Master Data Lokasi Patroli QR Code LSMS"
           data={patrolLocations}
-          columns={patrolLocColumns}
+          columns={filterColumns(patrolLocColumns)}
           searchPlaceholder="Cari lokasi atau kode QR..."
           exportFilename="Master_Lokasi_Patroli_LSMS"
         />
@@ -521,7 +530,7 @@ export const MasterDataComponent: React.FC = () => {
         <DataTable
           title="Master Data Kendaraan Sekolah LSMS"
           data={vehiclesList}
-          columns={vehicleColumns}
+          columns={filterColumns(vehicleColumns)}
           searchPlaceholder="Cari armada atau plat nomor..."
           exportFilename="Master_Kendaraan_LSMS"
         />
@@ -531,7 +540,7 @@ export const MasterDataComponent: React.FC = () => {
         <DataTable
           title="Master Data Jenis Insiden LSMS"
           data={incidentCategories}
-          columns={incidentColumns}
+          columns={filterColumns(incidentColumns)}
           searchPlaceholder="Cari jenis insiden..."
           exportFilename="Master_Jenis_Insiden_LSMS"
         />
@@ -541,7 +550,7 @@ export const MasterDataComponent: React.FC = () => {
         <DataTable
           title="Master Data Tujuan Kunjungan LSMS"
           data={purposesList}
-          columns={purposeColumns}
+          columns={filterColumns(purposeColumns)}
           searchPlaceholder="Cari tujuan kunjungan..."
           exportFilename="Master_Tujuan_LSMS"
         />

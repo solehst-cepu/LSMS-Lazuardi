@@ -305,14 +305,16 @@ export const PatrolComponent: React.FC = () => {
           >
             Riwayat Log Patroli
           </button>
-          <button
-            onClick={() => setActiveTab('qr-generator')}
-            className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
-              activeTab === 'qr-generator' ? 'bg-white text-blue-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Cetak QR Lokasi
-          </button>
+          {currentUser.role !== 'User' && (
+            <button
+              onClick={() => setActiveTab('qr-generator')}
+              className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                activeTab === 'qr-generator' ? 'bg-white text-blue-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Cetak QR Lokasi
+            </button>
+          )}
         </div>
       </div>
 
@@ -616,16 +618,20 @@ export const PatrolComponent: React.FC = () => {
           columns={columns}
           searchPlaceholder="Cari titik lokasi, nama petugas, atau status..."
           exportFilename="Laporan_Patroli_LSMS"
-          actions={(row) => (
-            <button
-              onClick={() => setLogToDelete(row)}
-              className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
-              title="Hapus Log Patroli"
-            >
-              <Trash2 className="w-4 h-4" />
-              <span className="text-xs font-semibold">Hapus</span>
-            </button>
-          )}
+          actions={
+            currentUser.role === 'Administrator'
+              ? (row) => (
+                  <button
+                    onClick={() => setLogToDelete(row)}
+                    className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                    title="Hapus Log Patroli"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span className="text-xs font-semibold">Hapus</span>
+                  </button>
+                )
+              : undefined
+          }
         />
       )}
 

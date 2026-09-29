@@ -178,16 +178,20 @@ export const DailyReportComponent: React.FC = () => {
           columns={columns}
           searchPlaceholder="Cari tanggal, situasi, atau nama petugas..."
           exportFilename="Daily_Security_Report_LSMS"
-          actions={(row) => (
-            <button
-              onClick={() => setReportToDelete(row)}
-              className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
-              title="Hapus Laporan Harian"
-            >
-              <Trash2 className="w-4 h-4" />
-              <span className="text-xs font-semibold">Hapus</span>
-            </button>
-          )}
+          actions={
+            currentUser.role === 'Administrator'
+              ? (row) => (
+                  <button
+                    onClick={() => setReportToDelete(row)}
+                    className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                    title="Hapus Laporan Harian"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span className="text-xs font-semibold">Hapus</span>
+                  </button>
+                )
+              : undefined
+          }
         />
       )}
 
