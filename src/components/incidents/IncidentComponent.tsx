@@ -15,13 +15,23 @@ import {
 } from 'lucide-react';
 
 export const IncidentComponent: React.FC = () => {
-  const { incidents, addIncident, updateIncidentStatus, deleteIncident, staffList, currentUser } = useApp();
+  const {
+    incidents,
+    addIncident,
+    updateIncidentStatus,
+    deleteIncident,
+    clearAllIncidents,
+    staffList,
+    currentUser,
+  } = useApp();
 
   const [activeTab, setActiveTab] = useState<'list' | 'input'>('list');
   const [selectedIncident, setSelectedIncident] = useState<IncidentReport | null>(null);
   const [incidentToDelete, setIncidentToDelete] = useState<IncidentReport | null>(null);
+  const [showClearAllModal, setShowClearAllModal] = useState(false);
   const [newStatus, setNewStatus] = useState<IncidentStatus>('Open');
   const [actionNotes, setActionNotes] = useState('');
+  const [toastMessage, setToastMessage] = useState('');
 
   const now = new Date();
   const defaultDate = now.toISOString().slice(0, 10);
@@ -60,11 +70,12 @@ export const IncidentComponent: React.FC = () => {
       status: 'Open',
     });
 
+    setToastMessage('Laporan Insiden Berhasil Dibuat! Notifikasi prioritas dikirim ke seluruh Supervisor & Admin LSMS.');
     setSuccessToast(true);
     setTimeout(() => {
       setSuccessToast(false);
       setActiveTab('list');
-    }, 2000);
+    }, 2500);
 
     setForm({
       category: 'Kecelakaan',
@@ -168,34 +179,48 @@ export const IncidentComponent: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl">
-          <button
-            onClick={() => setActiveTab('list')}
-            className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
-              activeTab === 'list' ? 'bg-white text-blue-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Daftar Insiden
-          </button>
-          <button
-            onClick={() => setActiveTab('input')}
-            className={`px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${
-              activeTab === 'input' ? 'bg-rose-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <PlusCircle className="w-3.5 h-3.5" />
-            <span>Buat Laporan Baru</span>
-          </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {activeTab === 'list' && incidents.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowClearAllModal(true)}
+              className="px-3 py-1.5 text-xs font-bold rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+              title="Hapus semua data demo / kosongkan riwayat insiden"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+              <span>Hapus Data Demo ({incidents.length})</span>
+            </button>
+          )}
+
+          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
+            <button
+              onClick={() => setActiveTab('list')}
+              className={`px-4 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                activeTab === 'list' ? 'bg-white text-blue-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Daftar Insiden ({incidents.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('input')}
+              className={`px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'input' ? 'bg-rose-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <PlusCircle className="w-3.5 h-3.5" />
+              <span>Buat Laporan Baru</span>
+            </button>
+          </div>
         </div>
       </div>
 
       {successToast && (
-        <div className="p-4 bg-emerald-600 text-white rounded-xl shadow-lg flex items-center gap-3">
-          <CheckCircle2 className="w-6 h-6 text-white" />
+        <div className="p-4 bg-emerald-600 text-white rounded-xl shadow-lg flex items-center gap-3 animate-fadeIn">
+          <CheckCircle2 className="w-6 h-6 text-white shrink-0" />
           <div>
-            <p className="font-bold text-sm">Laporan Insiden Berhasil Dibuat!</p>
+            <p className="font-bold text-sm">Berhasil!</p>
             <p className="text-xs text-emerald-100">
-              Notifikasi prioritas dikirim ke seluruh Supervisor & Admin LSMS.
+              {toastMessage || 'Perubahan data insiden berhasil disimpan ke sistem.'}
             </p>
           </div>
         </div>
@@ -238,7 +263,7 @@ export const IncidentComponent: React.FC = () => {
                   setNewStatus(row.status);
                   setActionNotes(row.actionTaken || '');
                 }}
-                className="px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 font-bold text-xs rounded-lg border border-blue-200 transition-colors"
+                className="px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 font-bold text-xs rounded-lg border border-blue-200 transition-colors cursor-pointer"
               >
                 Update Status
               </button>
@@ -260,12 +285,32 @@ export const IncidentComponent: React.FC = () => {
         onClose={() => setIncidentToDelete(null)}
         onConfirm={() => {
           if (incidentToDelete) {
+            const num = incidentToDelete.incidentNumber;
             deleteIncident(incidentToDelete.id);
             setIncidentToDelete(null);
+            setToastMessage(`Laporan insiden "${num}" berhasil dihapus dari sistem!`);
+            setSuccessToast(true);
+            setTimeout(() => setSuccessToast(false), 3000);
           }
         }}
         title="Hapus Laporan Insiden"
-        message={`Apakah Anda yakin ingin menghapus Laporan Insiden "${incidentToDelete?.incidentNumber}" (${incidentToDelete?.category})? Data akan terhapus permanen.`}
+        message={`Apakah Anda yakin ingin menghapus Laporan Insiden "${incidentToDelete?.incidentNumber}" (${incidentToDelete?.category})? Data ini akan terhapus permanen dari sistem.`}
+        confirmText="Ya, Hapus Data"
+      />
+
+      <ConfirmModal
+        isOpen={showClearAllModal}
+        onClose={() => setShowClearAllModal(false)}
+        onConfirm={() => {
+          clearAllIncidents();
+          setShowClearAllModal(false);
+          setToastMessage('Semua data demo dan riwayat laporan insiden berhasil dibersihkan!');
+          setSuccessToast(true);
+          setTimeout(() => setSuccessToast(false), 3000);
+        }}
+        title="Hapus / Kosongkan Seluruh Data Insiden"
+        message={`Apakah Anda yakin ingin menghapus semua (${incidents.length}) data laporan insiden termasuk data input demo sebelumnya? Tindakan ini akan mengosongkan riwayat laporan insiden.`}
+        confirmText="Ya, Kosongkan Semua"
       />
 
       {/* TAB 2: INPUT FORM */}

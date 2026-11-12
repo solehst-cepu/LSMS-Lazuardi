@@ -57,10 +57,10 @@ export const initialUsers: User[] = [
   },
   {
     id: 'USR-03',
-    username: 'ismail',
-    name: 'Ismail (Petugas)',
+    username: 'security',
+    name: 'Petugas Security',
     role: 'User',
-    email: 'ismail.sec@lazuardi.sch.id',
+    email: 'security.pos@lazuardi.sch.id',
     phone: '081512345678',
     unit: 'Security Pos Utama',
     password: 'user123',

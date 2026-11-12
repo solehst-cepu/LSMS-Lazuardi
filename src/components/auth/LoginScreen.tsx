@@ -3,7 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { Shield, Lock, User as UserIcon, KeyRound, AlertTriangle, CheckCircle2, Eye, EyeOff, Info } from 'lucide-react';
 
 export const LoginScreen: React.FC = () => {
-  const { login, lockoutTimeLeft, loginPolicy } = useApp();
+  const { login, lockoutTimeLeft, loginPolicy, usersList } = useApp();
 
   const [loginMethod, setLoginMethod] = useState<'password' | 'pin'>('password');
   const [username, setUsername] = useState('');
@@ -163,50 +163,82 @@ export const LoginScreen: React.FC = () => {
               </div>
             </div>
 
-            {/* Quick Demo Login Chips */}
+            {/* Presensi Cepat Petugas Security (Hanya akun "security") */}
             <div className="pt-1">
-              <span className="text-[11px] font-bold text-slate-500 block mb-1.5">Pilih Akun Demo / Presensi Cepat:</span>
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLoginMethod('password');
-                    setUsername('admin');
-                    setPasswordOrPin('admin123');
-                    setErrorMessage('');
-                  }}
-                  className="p-2 text-left rounded-lg border border-slate-200 bg-slate-50 hover:bg-blue-50 hover:border-blue-300 transition-all text-[11px] cursor-pointer"
-                >
-                  <span className="font-bold text-slate-800 block truncate">Admin</span>
-                  <span className="text-[10px] text-slate-500 font-mono">admin123</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLoginMethod('password');
-                    setUsername('supervisor');
-                    setPasswordOrPin('super123');
-                    setErrorMessage('');
-                  }}
-                  className="p-2 text-left rounded-lg border border-slate-200 bg-slate-50 hover:bg-blue-50 hover:border-blue-300 transition-all text-[11px] cursor-pointer"
-                >
-                  <span className="font-bold text-slate-800 block truncate">Supervisor</span>
-                  <span className="text-[10px] text-slate-500 font-mono">super123</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLoginMethod('pin');
-                    setUsername('ismail');
-                    setPasswordOrPin('123456');
-                    setErrorMessage('');
-                  }}
-                  className="p-2 text-left rounded-lg border border-slate-200 bg-slate-50 hover:bg-blue-50 hover:border-blue-300 transition-all text-[11px] cursor-pointer"
-                >
-                  <span className="font-bold text-slate-800 block truncate">Pos Security</span>
-                  <span className="text-[10px] text-blue-700 font-mono font-bold">PIN 123456</span>
-                </button>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+                  <Shield className="w-3.5 h-3.5 text-blue-700" />
+                  <span>Presensi Cepat Petugas Security:</span>
+                </span>
+                <span className="text-[10px] text-blue-700 font-semibold bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                  Login PIN Pos
+                </span>
               </div>
+
+              {(() => {
+                const securityAccount =
+                  usersList.find((u) => u.username.toLowerCase() === 'security') ||
+                  usersList.find((u) => u.role === 'User') || {
+                    username: 'security',
+                    name: 'Petugas Security',
+                    role: 'User' as const,
+                    unit: 'Security Pos Utama',
+                    pin: '123456',
+                  };
+                const pin = securityAccount.pin || '123456';
+                const isSelected =
+                  username.toLowerCase() === 'security' && loginMethod === 'pin';
+
+                return (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoginMethod('pin');
+                      setUsername('security');
+                      setPasswordOrPin(pin);
+                      setErrorMessage('');
+                    }}
+                    className={`w-full p-2.5 text-left rounded-xl border transition-all text-xs flex items-center justify-between cursor-pointer ${
+                      isSelected
+                        ? 'border-blue-600 bg-blue-50/90 shadow-xs ring-1 ring-blue-500'
+                        : 'border-slate-200 bg-slate-50 hover:bg-blue-50/50 hover:border-blue-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shadow-2xs ${
+                          isSelected
+                            ? 'bg-blue-700 text-white'
+                            : 'bg-slate-200 text-slate-700'
+                        }`}
+                      >
+                        <Lock className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="font-bold text-slate-900 leading-tight flex items-center gap-1.5">
+                          <span>Petugas Security</span>
+                          <span className="text-[10px] font-bold px-1.5 py-0.2 bg-blue-100 text-blue-800 rounded">
+                            Pos Security
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">
+                          Username:{' '}
+                          <span className="font-mono text-slate-800 font-bold">security</span>{' '}
+                          | Security Pos Utama
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="inline-block px-2 py-1 bg-white border border-blue-200 text-blue-700 font-mono font-bold text-xs rounded-lg shadow-2xs">
+                        PIN: {pin}
+                      </span>
+                      <span className="block text-[10px] text-slate-400 mt-0.5">
+                        Klik untuk isi
+                      </span>
+                    </div>
+                  </button>
+                );
+              })()}
             </div>
 
             <button
