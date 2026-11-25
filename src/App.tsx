@@ -54,7 +54,7 @@ const AppContent: React.FC = () => {
         return <MainDashboard setActiveMenu={setActiveTab} />;
       case 'analytics':
       case 'dashboard-analytics':
-        return <AnalyticsDashboard />;
+        return <AnalyticsDashboard setActiveMenu={setActiveTab} />;
       case 'visitor-checkin':
         return <VisitorCheckIn />;
       case 'visitor-checkout':

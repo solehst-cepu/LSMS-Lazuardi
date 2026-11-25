@@ -57,10 +57,16 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({ setActiveMenu, set
   const overdueVisitors = activeVisitors.filter((v) => (v.durationMinutes || 0) > 240);
 
   const patrolToday = patrolLogs.filter((p) => p.date === todayStr);
-  const openIncidents = incidents.filter((i) => i.status !== 'Closed');
-  const criticalIncidents = incidents.filter((i) => i.priority === 'Critical' && i.status !== 'Closed');
+  const sortedIncidents = sortNewestFirst(incidents);
+  const openIncidents = sortedIncidents.filter((i) => i.status === 'Open');
+  const progressIncidents = sortedIncidents.filter((i) => i.status === 'Progress');
+  const closedIncidents = sortedIncidents.filter((i) => i.status === 'Closed');
+  const unresolvedIncidents = sortedIncidents.filter((i) => i.status !== 'Closed');
+  const criticalIncidents = sortedIncidents.filter((i) => i.priority === 'Critical' && i.status !== 'Closed');
 
-  const pendingLostFound = lostAndFound.filter((l) => l.status === 'Belum Diambil');
+  const sortedLostFound = sortNewestFirst(lostAndFound);
+  const pendingLostFound = sortedLostFound.filter((l) => l.status === 'Belum Diambil');
+  const claimedLostFound = sortedLostFound.filter((l) => l.status === 'Sudah Diambil');
   const activeBarangTitipan = barangTitipan.filter((b) => b.status === 'Dititipkan');
   const activeVehicles = vehiclesLog.filter((v) => v.status === 'Masih Keluar');
 
@@ -121,10 +127,17 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({ setActiveMenu, set
             </button>
             <button
               onClick={() => handleSetActive('incidents')}
-              className="px-3.5 py-2 bg-rose-600/90 hover:bg-rose-600 text-white font-semibold text-xs rounded-xl transition-all flex items-center gap-2"
+              className="px-3.5 py-2 bg-rose-600/90 hover:bg-rose-600 text-white font-semibold text-xs rounded-xl transition-all flex items-center gap-2 cursor-pointer"
             >
               <AlertOctagon className="w-4 h-4" />
               <span>Lapor Insiden</span>
+            </button>
+            <button
+              onClick={() => handleSetActive('lost-found')}
+              className="px-3.5 py-2 bg-amber-500/90 hover:bg-amber-500 text-white font-semibold text-xs rounded-xl transition-all flex items-center gap-2 cursor-pointer"
+            >
+              <PackageSearch className="w-4 h-4" />
+              <span>Lost & Found</span>
             </button>
           </div>
         </div>
@@ -268,7 +281,7 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({ setActiveMenu, set
         <div
           onClick={() => handleSetActive('incidents')}
           className={`p-4 bg-white rounded-xl border shadow-xs hover:shadow-md transition-all cursor-pointer group ${
-            openIncidents.length > 0 ? 'border-rose-200 bg-rose-50/20' : 'border-slate-200'
+            unresolvedIncidents.length > 0 ? 'border-rose-200 bg-rose-50/20' : 'border-slate-200'
           }`}
         >
           <div className="flex items-center justify-between">
@@ -278,10 +291,12 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({ setActiveMenu, set
             </div>
           </div>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-slate-900">{openIncidents.length} Open</span>
+            <span className="text-2xl font-bold text-slate-900">{unresolvedIncidents.length} Aktif</span>
             <span className="text-xs text-slate-500">Total: {incidents.length}</span>
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">Laporan perlu penanganan</p>
+          <p className="text-[11px] text-slate-400 mt-1">
+            Open: {openIncidents.length} · Progress: {progressIncidents.length} · Closed: {closedIncidents.length}
+          </p>
         </div>
 
         {/* 6. Daily Security Report */}
@@ -319,7 +334,9 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({ setActiveMenu, set
             <span className="text-2xl font-bold text-slate-900">{pendingLostFound.length} Barang</span>
             <span className="text-xs text-slate-400">Belum Diambil</span>
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">Disimpan di Pos Keamanan</p>
+          <p className="text-[11px] text-slate-400 mt-1">
+            Sudah Diambil: {claimedLostFound.length} · Total: {lostAndFound.length}
+          </p>
         </div>
 
         {/* 8. Penitipan Barang */}
@@ -489,6 +506,164 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({ setActiveMenu, set
               )}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* LAPORAN INSIDEN & LOST AND FOUND TERBARU */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Panel Laporan Insiden Terbaru */}
+        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs flex flex-col">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+            <div>
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-600" />
+                <span>Laporan Insiden Terbaru ({sortedIncidents.length})</span>
+              </h3>
+              <p className="text-xs text-slate-500">
+                Open: <span className="font-bold text-rose-600">{openIncidents.length}</span> · Progress:{' '}
+                <span className="font-bold text-amber-600">{progressIncidents.length}</span> · Closed:{' '}
+                <span className="font-bold text-emerald-600">{closedIncidents.length}</span>
+              </p>
+            </div>
+            <button
+              onClick={() => handleSetActive('incidents')}
+              className="text-xs font-bold text-rose-700 bg-rose-50 px-3 py-1.5 rounded-lg border border-rose-200 hover:bg-rose-100 transition-colors cursor-pointer flex items-center gap-1"
+            >
+              <span>Kelola Insiden</span>
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <div className="space-y-3 flex-1">
+            {sortedIncidents.length > 0 ? (
+              sortedIncidents.slice(0, 5).map((inc) => (
+                <div
+                  key={inc.id}
+                  onClick={() => handleSetActive('incidents')}
+                  className="p-3 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-rose-50/40 hover:border-rose-200 transition-all cursor-pointer"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="font-mono text-[11px] font-bold text-slate-700">{inc.incidentNumber}</span>
+                        <span className="text-xs font-bold text-slate-900">{inc.category}</span>
+                        <span
+                          className={`px-2 py-0.5 rounded font-bold text-[10px] ${
+                            inc.priority === 'Critical'
+                              ? 'bg-rose-600 text-white'
+                              : inc.priority === 'High'
+                              ? 'bg-orange-100 text-orange-800 border border-orange-200'
+                              : inc.priority === 'Medium'
+                              ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                              : 'bg-slate-200 text-slate-700'
+                          }`}
+                        >
+                          {inc.priority}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-600 mt-1 line-clamp-2">{inc.chronology}</p>
+                    </div>
+                    <span
+                      className={`px-2 py-0.5 rounded-full font-bold text-[10px] shrink-0 ${
+                        inc.status === 'Open'
+                          ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                          : inc.status === 'Progress'
+                          ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                          : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                      }`}
+                    >
+                      {inc.status}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-between gap-2 mt-2 pt-2 border-t border-slate-200/70 text-[10px] text-slate-500">
+                    <span>Lokasi: <strong className="text-slate-700">{inc.location}</strong></span>
+                    <span className="font-mono">{inc.date} {inc.time} · {inc.officerName}</span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="p-6 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-xl">
+                Belum ada laporan insiden yang tercatat.
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Panel Laporan Lost & Found Terbaru */}
+        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs flex flex-col">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+            <div>
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <PackageSearch className="w-4 h-4 text-amber-600" />
+                <span>Laporan Lost & Found Terbaru ({sortedLostFound.length})</span>
+              </h3>
+              <p className="text-xs text-slate-500">
+                Belum Diambil: <span className="font-bold text-amber-600">{pendingLostFound.length}</span> · Sudah Diambil:{' '}
+                <span className="font-bold text-emerald-600">{claimedLostFound.length}</span>
+              </p>
+            </div>
+            <button
+              onClick={() => handleSetActive('lost-found')}
+              className="text-xs font-bold text-amber-800 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200 hover:bg-amber-100 transition-colors cursor-pointer flex items-center gap-1"
+            >
+              <span>Kelola Lost & Found</span>
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <div className="space-y-3 flex-1">
+            {sortedLostFound.length > 0 ? (
+              sortedLostFound.slice(0, 5).map((item) => (
+                <div
+                  key={item.id}
+                  onClick={() => handleSetActive('lost-found')}
+                  className="p-3 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-amber-50/40 hover:border-amber-200 transition-all cursor-pointer flex items-start gap-3"
+                >
+                  {item.photoUrl ? (
+                    <img
+                      src={item.photoUrl}
+                      alt={item.itemName}
+                      className="w-11 h-11 rounded-lg object-cover border border-slate-200 shrink-0"
+                    />
+                  ) : (
+                    <div className="w-11 h-11 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                      <PackageSearch className="w-5 h-5" />
+                    </div>
+                  )}
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-xs font-bold text-slate-900 truncate">{item.itemName}</p>
+                      <span
+                        className={`px-2 py-0.5 rounded-full font-bold text-[10px] shrink-0 ${
+                          item.status === 'Belum Diambil'
+                            ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                            : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                        }`}
+                      >
+                        {item.status}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 mt-0.5">
+                      Lokasi: <strong className="text-slate-700">{item.location}</strong> · Penemu: {item.foundBy}
+                    </p>
+                    <div className="flex flex-wrap items-center justify-between gap-2 mt-1.5 text-[10px] text-slate-500">
+                      <span className="font-mono">Tgl Temuan: {item.dateFound}</span>
+                      {item.status === 'Sudah Diambil' && item.claimedBy && (
+                        <span className="text-emerald-700 font-semibold">
+                          Diambil oleh: {item.claimedBy}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="p-6 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-xl">
+                Belum ada laporan barang temuan (Lost & Found).
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
