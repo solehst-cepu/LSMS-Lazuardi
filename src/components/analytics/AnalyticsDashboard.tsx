@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
-import { sortNewestFirst } from '../../utils/sorting';
+import { sortNewestFirst, parseFlexibleDate, getItemTimestampScore } from '../../utils/sorting';
 import {
   BarChart3,
   TrendingUp,
@@ -13,6 +13,9 @@ import {
   CheckCircle2,
   Clock,
   ArrowUpRight,
+  FileCheck2,
+  Package,
+  Car,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -36,41 +39,150 @@ interface AnalyticsDashboardProps {
   setActiveMenu?: (menu: string) => void;
 }
 
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+function normalizeYMD(dateStr?: string, timestampStr?: string): string {
+  const candidates = [dateStr, timestampStr].filter(Boolean) as string[];
+  for (const raw of candidates) {
+    const str = String(raw).trim();
+    const isoMatch = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (isoMatch) {
+      return `${isoMatch[1]}-${String(isoMatch[2]).padStart(2, '0')}-${String(isoMatch[3]).padStart(2, '0')}`;
+    }
+    const dmyMatch = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+    if (dmyMatch) {
+      return `${dmyMatch[3]}-${String(dmyMatch[2]).padStart(2, '0')}-${String(dmyMatch[1]).padStart(2, '0')}`;
+    }
+    const parsed = parseFlexibleDate(str);
+    if (parsed > 0) {
+      const d = new Date(parsed);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+  }
+  return '';
+}
+
+function extractHour(timeStr?: string, timestampStr?: string): number | null {
+  if (timeStr) {
+    const match = String(timeStr).match(/(\d{1,2})[:.](\d{1,2})/);
+    if (match) {
+      const h = parseInt(match[1], 10);
+      if (h >= 0 && h <= 23) return h;
+    }
+  }
+  if (timestampStr) {
+    const match = String(timestampStr).match(/[ T,](\d{1,2})[:.](\d{1,2})/);
+    if (match) {
+      const h = parseInt(match[1], 10);
+      if (h >= 0 && h <= 23) return h;
+    }
+  }
+  return null;
+}
+
 export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ setActiveMenu }) => {
-  const { visitors, incidents, patrolLocations, patrolLogs, lostAndFound } = useApp();
+  const {
+    visitors,
+    incidents,
+    patrolLocations,
+    patrolLogs,
+    lostAndFound,
+    dailyReports,
+    barangTitipan,
+    vehiclesLog,
+  } = useApp();
 
   // Colors Palette
   const COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899'];
 
-  // 1. Line Chart Data: Trend Visitor 7 Hari Terakhir
-  const lineVisitorData = [
-    { date: '28 Jul', visitor: 24, checkout: 24 },
-    { date: '29 Jul', visitor: 32, checkout: 31 },
-    { date: '30 Jul', visitor: 29, checkout: 29 },
-    { date: '31 Jul', visitor: 45, checkout: 44 },
-    { date: '01 Agu', visitor: 38, checkout: 38 },
-    { date: '02 Agu', visitor: 18, checkout: 18 },
-    { date: '03 Agu', visitor: 35, checkout: 30 },
-  ];
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
 
-  // 2. Bar Chart Data: Top 5 Lokasi Patroli Paling Sering Di-scan
-  const topPatrolLocations = patrolLocations.map((loc) => {
-    const scansCount = patrolLogs.filter((p) => p.locationId === loc.id).length + Math.floor(Math.random() * 8 + 3);
-    return { name: loc.name, totalScan: scansCount };
-  }).sort((a, b) => b.totalScan - a.totalScan).slice(0, 5);
+  // 0. Overall Health Gauges (100% Actual Data)
+  const todayPatrolLogs = useMemo(
+    () => patrolLogs.filter((p) => normalizeYMD(p.date, p.timestamp) === todayStr),
+    [patrolLogs, todayStr]
+  );
+  const totalTargetScans = useMemo(
+    () => patrolLocations.reduce((sum, loc) => sum + (loc.targetTimesPerShift || 1), 0),
+    [patrolLocations]
+  );
+  const patrolComplianceRate =
+    totalTargetScans > 0
+      ? Math.min(100, (todayPatrolLogs.length / totalTargetScans) * 100).toFixed(1)
+      : patrolLogs.length > 0
+      ? '100.0'
+      : '0.0';
 
-  // 3. Donut Chart Data: Distribusi Kategori Visitor
-  const visitorCategoryCounts: Record<string, number> = {};
-  visitors.forEach((v) => {
-    visitorCategoryCounts[v.category] = (visitorCategoryCounts[v.category] || 0) + 1;
-  });
-  const pieVisitorData = Object.keys(visitorCategoryCounts).map((cat) => ({
-    name: cat,
-    value: visitorCategoryCounts[cat],
-  }));
+  const checkedOutVisitorsTotal = visitors.filter((v) => v.status === 'Sudah Keluar').length;
+  const visitorCheckoutRate =
+    visitors.length > 0 ? ((checkedOutVisitorsTotal / visitors.length) * 100).toFixed(1) : '0.0';
+
+  // 1. Line Chart Data: Trend Visitor 7 Hari Terakhir (Actual)
+  const lineVisitorData = useMemo(() => {
+    const result: { date: string; visitor: number; checkout: number }[] = [];
+    for (let offset = 6; offset >= 0; offset--) {
+      const d = new Date(now);
+      d.setUTCDate(now.getUTCDate() - offset);
+      const ymd = d.toISOString().slice(0, 10);
+      const label = `${String(d.getUTCDate()).padStart(2, '0')} ${MONTH_NAMES[d.getUTCMonth()]}`;
+      const dayVisitors = visitors.filter((v) => normalizeYMD(v.date) === ymd);
+      const dayCheckouts = dayVisitors.filter((v) => v.status === 'Sudah Keluar');
+      result.push({
+        date: label,
+        visitor: dayVisitors.length,
+        checkout: dayCheckouts.length,
+      });
+    }
+    return result;
+  }, [visitors, todayStr]);
+
+  // 2. Bar Chart Data: Top 5 Lokasi Patroli Paling Sering Di-scan (Actual)
+  const topPatrolLocations = useMemo(() => {
+    const countsByKey: Record<string, { name: string; totalScan: number }> = {};
+
+    patrolLocations.forEach((loc) => {
+      countsByKey[loc.id] = { name: loc.name, totalScan: 0 };
+    });
+
+    patrolLogs.forEach((log) => {
+      if (log.locationId && countsByKey[log.locationId]) {
+        countsByKey[log.locationId].totalScan += 1;
+      } else {
+        const matchByName = Object.values(countsByKey).find(
+          (entry) => entry.name.toLowerCase() === (log.locationName || '').toLowerCase()
+        );
+        if (matchByName) {
+          matchByName.totalScan += 1;
+        } else if (log.locationName) {
+          const fallbackKey = `EXTRA-${log.locationName}`;
+          if (!countsByKey[fallbackKey]) {
+            countsByKey[fallbackKey] = { name: log.locationName, totalScan: 0 };
+          }
+          countsByKey[fallbackKey].totalScan += 1;
+        }
+      }
+    });
+
+    return Object.values(countsByKey)
+      .sort((a, b) => b.totalScan - a.totalScan)
+      .slice(0, 5);
+  }, [patrolLocations, patrolLogs]);
+
+  // 3. Donut Chart Data: Distribusi Kategori Visitor (Actual)
+  const pieVisitorData = useMemo(() => {
+    const visitorCategoryCounts: Record<string, number> = {};
+    visitors.forEach((v) => {
+      visitorCategoryCounts[v.category] = (visitorCategoryCounts[v.category] || 0) + 1;
+    });
+    return Object.keys(visitorCategoryCounts).map((cat) => ({
+      name: cat,
+      value: visitorCategoryCounts[cat],
+    }));
+  }, [visitors]);
 
   // 4. Incident Live Analytics
-  const sortedIncidents = sortNewestFirst(incidents);
+  const sortedIncidents = useMemo(() => sortNewestFirst(incidents), [incidents]);
   const openIncidentsCount = incidents.filter((i) => i.status === 'Open').length;
   const progressIncidentsCount = incidents.filter((i) => i.status === 'Progress').length;
   const closedIncidentsCount = incidents.filter((i) => i.status === 'Closed').length;
@@ -78,7 +190,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ setActiv
     (i) => i.priority === 'Critical' || i.priority === 'High'
   ).length;
   const incidentClearanceRate =
-    incidents.length > 0 ? ((closedIncidentsCount / incidents.length) * 100).toFixed(1) : '100.0';
+    incidents.length > 0 ? ((closedIncidentsCount / incidents.length) * 100).toFixed(1) : '0.0';
 
   const incidentPriorityData = [
     { name: 'Low', value: incidents.filter((i) => i.priority === 'Low').length, color: '#64748b' },
@@ -88,110 +200,208 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ setActiv
   ];
   const nonZeroPriorityData = incidentPriorityData.filter((d) => d.value > 0);
 
-  const incidentCategoryMap: Record<string, { category: string; aktif: number; selesai: number; total: number }> = {};
-  incidents.forEach((inc) => {
-    if (!incidentCategoryMap[inc.category]) {
-      incidentCategoryMap[inc.category] = { category: inc.category, aktif: 0, selesai: 0, total: 0 };
-    }
-    incidentCategoryMap[inc.category].total += 1;
-    if (inc.status === 'Closed') {
-      incidentCategoryMap[inc.category].selesai += 1;
-    } else {
-      incidentCategoryMap[inc.category].aktif += 1;
-    }
-  });
-  const incidentCategoryData = Object.values(incidentCategoryMap).sort((a, b) => b.total - a.total);
+  const incidentCategoryData = useMemo(() => {
+    const incidentCategoryMap: Record<string, { category: string; aktif: number; selesai: number; total: number }> = {};
+    incidents.forEach((inc) => {
+      if (!incidentCategoryMap[inc.category]) {
+        incidentCategoryMap[inc.category] = { category: inc.category, aktif: 0, selesai: 0, total: 0 };
+      }
+      incidentCategoryMap[inc.category].total += 1;
+      if (inc.status === 'Closed') {
+        incidentCategoryMap[inc.category].selesai += 1;
+      } else {
+        incidentCategoryMap[inc.category].aktif += 1;
+      }
+    });
+    return Object.values(incidentCategoryMap).sort((a, b) => b.total - a.total);
+  }, [incidents]);
 
   // 4b. Lost & Found Live Analytics
-  const sortedLostFound = sortNewestFirst(lostAndFound);
+  const sortedLostFound = useMemo(() => sortNewestFirst(lostAndFound), [lostAndFound]);
   const pendingLostFoundCount = lostAndFound.filter((l) => l.status === 'Belum Diambil').length;
   const claimedLostFoundCount = lostAndFound.filter((l) => l.status === 'Sudah Diambil').length;
   const lostFoundRecoveryRate =
-    lostAndFound.length > 0 ? ((claimedLostFoundCount / lostAndFound.length) * 100).toFixed(1) : '100.0';
+    lostAndFound.length > 0 ? ((claimedLostFoundCount / lostAndFound.length) * 100).toFixed(1) : '0.0';
 
   const lostFoundStatusData = [
     { name: 'Belum Diambil', value: pendingLostFoundCount, color: '#f59e0b' },
     { name: 'Sudah Diambil', value: claimedLostFoundCount, color: '#10b981' },
   ].filter((d) => d.value > 0);
 
-  const lostFoundLocationMap: Record<string, { location: string; belum: number; sudah: number; total: number }> = {};
-  lostAndFound.forEach((item) => {
-    const loc = item.location || 'Lainnya';
-    if (!lostFoundLocationMap[loc]) {
-      lostFoundLocationMap[loc] = { location: loc, belum: 0, sudah: 0, total: 0 };
+  const lostFoundLocationData = useMemo(() => {
+    const lostFoundLocationMap: Record<string, { location: string; belum: number; sudah: number; total: number }> = {};
+    lostAndFound.forEach((item) => {
+      const loc = item.location || 'Lainnya';
+      if (!lostFoundLocationMap[loc]) {
+        lostFoundLocationMap[loc] = { location: loc, belum: 0, sudah: 0, total: 0 };
+      }
+      lostFoundLocationMap[loc].total += 1;
+      if (item.status === 'Sudah Diambil') {
+        lostFoundLocationMap[loc].sudah += 1;
+      } else {
+        lostFoundLocationMap[loc].belum += 1;
+      }
+    });
+    return Object.values(lostFoundLocationMap)
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 6);
+  }, [lostAndFound]);
+
+  // 5. Area Chart Data: Trend Bulanan Patroli vs Insiden (6 Bulan Terakhir - Actual)
+  const monthlyData = useMemo(() => {
+    const curYear = Number(todayStr.slice(0, 4));
+    const curMonth = Number(todayStr.slice(5, 7)) - 1;
+    const months: { month: string; patroli: number; insiden: number }[] = [];
+
+    for (let i = 5; i >= 0; i--) {
+      const mDate = new Date(Date.UTC(curYear, curMonth - i, 1));
+      const ym = `${mDate.getUTCFullYear()}-${String(mDate.getUTCMonth() + 1).padStart(2, '0')}`;
+      const label = `${MONTH_NAMES[mDate.getUTCMonth()]} '${String(mDate.getUTCFullYear()).slice(-2)}`;
+
+      const patrolCount = patrolLogs.filter((p) => normalizeYMD(p.date, p.timestamp).startsWith(ym)).length;
+      const incidentCount = incidents.filter((inc) => normalizeYMD(inc.date).startsWith(ym)).length;
+
+      months.push({
+        month: label,
+        patroli: patrolCount,
+        insiden: incidentCount,
+      });
     }
-    lostFoundLocationMap[loc].total += 1;
-    if (item.status === 'Sudah Diambil') {
-      lostFoundLocationMap[loc].sudah += 1;
-    } else {
-      lostFoundLocationMap[loc].belum += 1;
-    }
-  });
-  const lostFoundLocationData = Object.values(lostFoundLocationMap)
-    .sort((a, b) => b.total - a.total)
-    .slice(0, 6);
+    return months;
+  }, [patrolLogs, incidents, todayStr]);
 
-  // 5. Area Chart Data: Trend Bulanan Patroli vs Insiden
-  const monthlyData = [
-    { month: 'Jan', patroli: 280, insiden: 4 },
-    { month: 'Feb', patroli: 310, insiden: 2 },
-    { month: 'Mar', patroli: 295, insiden: 5 },
-    { month: 'Apr', patroli: 340, insiden: 3 },
-    { month: 'Mei', patroli: 320, insiden: 1 },
-    { month: 'Jun', patroli: 260, insiden: 2 },
-    { month: 'Jul', patroli: 380, insiden: 3 },
-    { month: 'Agu', patroli: 140, insiden: 1 },
-  ];
+  // 6. Top 10 Visitors Frequency (30 Hari Terakhir - Actual)
+  const topVisitors = useMemo(() => {
+    const d30 = new Date(now);
+    d30.setUTCDate(now.getUTCDate() - 29);
+    const start30Ymd = d30.toISOString().slice(0, 10);
 
-  // 6. Top 10 Visitors Frequency
-  const topVisitors = [
-    { name: 'Bambang Triyono', category: 'Vendor AC', count: 12, unit: 'Support' },
-    { name: 'Drs. Supriyadi, M.Pd', category: 'Dinas', count: 9, unit: 'Direktorat' },
-    { name: 'Kevin Wijaya', category: 'Sales Buku', count: 7, unit: 'Litbang' },
-    { name: 'Siti Rahmawati', category: 'Informasi', count: 6, unit: 'Informasi' },
-    { name: 'Hendra Setiawan', category: 'Vendor CCTV', count: 5, unit: 'Support' },
-    { name: 'Rina Marlina', category: 'Orang Tua', count: 5, unit: 'SD' },
-    { name: 'Agus Subagyo', category: 'Dinas Diknas', count: 4, unit: 'Direktorat' },
-    { name: 'Ahmad Fauzi', category: 'Catering', count: 4, unit: 'Support' },
-    { name: 'Ratna Sari', category: 'Informasi TK', count: 3, unit: 'TK' },
-    { name: 'Budi Kurniawan', category: 'Teknisi Internet', count: 3, unit: 'Support' },
-  ];
+    const map: Record<
+      string,
+      { name: string; category: string; unit: string; count: number; latestScore: number }
+    > = {};
 
-  // 7. Heatmap Simulation Matrix (Jam Rawan vs Hari)
-  const heatmapDays = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
-  const heatmapHours = ['07-09', '09-12', '12-14', '14-17'];
-  const getHeatmapIntensity = (dIdx: number, hIdx: number) => {
-    const val = (dIdx * 3 + hIdx * 7) % 10;
-    if (val > 7) return 'bg-rose-500 text-white';
-    if (val > 4) return 'bg-amber-400 text-slate-900';
-    if (val > 2) return 'bg-blue-300 text-slate-900';
-    return 'bg-slate-100 text-slate-600';
+    visitors.forEach((v) => {
+      const ymd = normalizeYMD(v.date);
+      if (ymd && (ymd < start30Ymd || ymd > todayStr)) return;
+
+      const key = (v.name || 'Visitor').trim().toLowerCase();
+      const score = getItemTimestampScore(v);
+      if (!map[key]) {
+        map[key] = {
+          name: v.name,
+          category: v.category,
+          unit: v.destinationUnit || '-',
+          count: 1,
+          latestScore: score,
+        };
+      } else {
+        map[key].count += 1;
+        if (score >= map[key].latestScore) {
+          map[key].latestScore = score;
+          map[key].category = v.category;
+          map[key].unit = v.destinationUnit || map[key].unit;
+        }
+      }
+    });
+
+    return Object.values(map)
+      .sort((a, b) => (b.count !== a.count ? b.count - a.count : b.latestScore - a.latestScore))
+      .slice(0, 10);
+  }, [visitors, todayStr]);
+
+  // 7. Heatmap Actual Matrix (Hari vs Slot Jam dari Visitor, Patroli & Insiden)
+  const heatmapDays = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+  const heatmapHours = ['06-09', '09-12', '12-15', '15-18', '18-06'];
+
+  const { heatmapMatrix, maxHeatCount } = useMemo(() => {
+    const matrix: number[][] = heatmapDays.map(() => heatmapHours.map(() => 0));
+
+    const addEventToMatrix = (dateStr?: string, timeStr?: string, timestampStr?: string) => {
+      const ymd = normalizeYMD(dateStr, timestampStr);
+      if (!ymd) return;
+      const [y, m, d] = ymd.split('-').map(Number);
+      if (!y || !m || !d) return;
+      const jsDay = new Date(y, m - 1, d).getDay(); // 0=Sun, 1=Mon...
+      const dayIdx = jsDay === 0 ? 6 : jsDay - 1;
+
+      const hour = extractHour(timeStr, timestampStr);
+      if (hour === null) return;
+
+      let hourIdx = 4; // 18-06
+      if (hour >= 6 && hour < 9) hourIdx = 0;
+      else if (hour >= 9 && hour < 12) hourIdx = 1;
+      else if (hour >= 12 && hour < 15) hourIdx = 2;
+      else if (hour >= 15 && hour < 18) hourIdx = 3;
+
+      matrix[dayIdx][hourIdx] += 1;
+    };
+
+    visitors.forEach((v) => addEventToMatrix(v.date, v.timeIn));
+    patrolLogs.forEach((p) => addEventToMatrix(p.date, p.time, p.timestamp));
+    incidents.forEach((inc) => addEventToMatrix(inc.date, inc.time));
+
+    let maxVal = 0;
+    matrix.forEach((row) =>
+      row.forEach((val) => {
+        if (val > maxVal) maxVal = val;
+      })
+    );
+
+    return { heatmapMatrix: matrix, maxHeatCount: maxVal };
+  }, [visitors, patrolLogs, incidents]);
+
+  const getHeatmapIntensity = (count: number) => {
+    if (count <= 0) return 'bg-slate-100 text-slate-400';
+    const ratio = maxHeatCount > 0 ? count / maxHeatCount : 0;
+    if (ratio >= 0.75 || count >= 6) return 'bg-rose-500 text-white';
+    if (ratio >= 0.45 || count >= 3) return 'bg-amber-400 text-slate-900';
+    return 'bg-blue-200 text-slate-900';
   };
+
+  // 8. Other Operations Summary (Daily Report, Barang Titipan, Kendaraan Sekolah)
+  const signedDailyReports = dailyReports.filter((r) => r.handoverStatus?.isSigned).length;
+  const activeTitipanCount = barangTitipan.filter((b) => b.status === 'Dititipkan').length;
+  const claimedTitipanCount = barangTitipan.filter((b) => b.status === 'Sudah Diambil').length;
+  const activeVehiclesCount = vehiclesLog.filter((v) => v.status === 'Masih Keluar').length;
+  const returnedVehiclesCount = vehiclesLog.filter((v) => v.status === 'Sudah Kembali').length;
 
   return (
     <div className="space-y-6">
       {/* Analytics Top Title */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
         <div>
           <div className="flex items-center gap-2 text-blue-700 text-xs font-bold uppercase tracking-wider mb-1">
             <BarChart3 className="w-4 h-4" />
-            <span>Executive Security Analytics</span>
+            <span>Executive Security Analytics · Data Aktual Terkini</span>
           </div>
           <h2 className="text-xl font-bold text-slate-900">Dashboard Analytics & Laporan Statistik</h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Analisis tren visitor, pola keamanan patroli, peta insiden, dan gauge kepatuhan operasional.
+            Analisis real-time visitor, kepatuhan patroli QR, insiden keamanan, dan Lost & Found per {todayStr}.
           </p>
         </div>
 
-        {/* Overall Health Gauge Metric */}
-        <div className="flex flex-wrap items-center gap-4 bg-slate-50 p-3 rounded-xl border border-slate-200">
-          <div className="text-center border-r border-slate-200 pr-4">
+        {/* Overall Health Gauge Metric (Live Actual Data) */}
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-4 bg-slate-50 p-3 rounded-xl border border-slate-200">
+          <div className="text-center sm:border-r sm:border-slate-200 sm:pr-4">
             <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 block">
               Patrol Compliance
             </span>
-            <span className="text-xl font-extrabold text-emerald-600">98.4%</span>
+            <span className="text-xl font-extrabold text-emerald-600">{patrolComplianceRate}%</span>
+            <span className="text-[10px] text-slate-500 block">
+              {todayPatrolLogs.length}/{totalTargetScans} Scan Hari Ini
+            </span>
           </div>
-          <div className="text-center border-r border-slate-200 pr-4">
+          <div className="text-center sm:border-r sm:border-slate-200 sm:pr-4">
+            <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 block">
+              Visitor Checkout
+            </span>
+            <span className="text-xl font-extrabold text-indigo-600">{visitorCheckoutRate}%</span>
+            <span className="text-[10px] text-slate-500 block">
+              {checkedOutVisitorsTotal}/{visitors.length} Keluar
+            </span>
+          </div>
+          <div className="text-center sm:border-r sm:border-slate-200 sm:pr-4">
             <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 block">
               Incident Clearance
             </span>
@@ -212,6 +422,55 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ setActiv
         </div>
       </div>
 
+      {/* Ringkasan Operasional Modul Pendukung (Actual) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div
+          onClick={() => setActiveMenu?.('daily-report')}
+          className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex items-center justify-between cursor-pointer hover:border-cyan-300 transition-colors"
+        >
+          <div>
+            <span className="text-[10px] font-bold uppercase text-slate-400 block">Laporan Harian Shift</span>
+            <span className="text-lg font-extrabold text-slate-900">{dailyReports.length} Laporan</span>
+            <span className="text-[11px] text-cyan-700 block">{signedDailyReports} Serah terima tertanda</span>
+          </div>
+          <div className="p-2.5 bg-cyan-50 text-cyan-700 rounded-xl">
+            <FileCheck2 className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div
+          onClick={() => setActiveMenu?.('barang-titipan')}
+          className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex items-center justify-between cursor-pointer hover:border-purple-300 transition-colors"
+        >
+          <div>
+            <span className="text-[10px] font-bold uppercase text-slate-400 block">Penitipan Barang</span>
+            <span className="text-lg font-extrabold text-slate-900">{barangTitipan.length} Total</span>
+            <span className="text-[11px] text-purple-700 block">
+              {activeTitipanCount} Dititipkan · {claimedTitipanCount} Diambil
+            </span>
+          </div>
+          <div className="p-2.5 bg-purple-50 text-purple-700 rounded-xl">
+            <Package className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div
+          onClick={() => setActiveMenu?.('school-vehicles')}
+          className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex items-center justify-between cursor-pointer hover:border-sky-300 transition-colors"
+        >
+          <div>
+            <span className="text-[10px] font-bold uppercase text-slate-400 block">Log Kendaraan Sekolah</span>
+            <span className="text-lg font-extrabold text-slate-900">{vehiclesLog.length} Perjalanan</span>
+            <span className="text-[11px] text-sky-700 block">
+              {activeVehiclesCount} Masih Keluar · {returnedVehiclesCount} Kembali
+            </span>
+          </div>
+          <div className="p-2.5 bg-sky-50 text-sky-700 rounded-xl">
+            <Car className="w-5 h-5" />
+          </div>
+        </div>
+      </div>
+
       {/* CHARTS GRID ROW 1: Line Chart & Donut Chart */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Line Chart: Trend Visitor & Checkout */}
@@ -222,15 +481,18 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ setActiv
                 <TrendingUp className="w-4 h-4 text-blue-600" />
                 <span>Tren Kunjungan Visitor (7 Hari Terakhir)</span>
               </h3>
-              <p className="text-xs text-slate-500">Jumlah visitor vs yang telah checkout</p>
+              <p className="text-xs text-slate-500">Data aktual visitor masuk vs yang telah checkout</p>
             </div>
+            <span className="text-[11px] font-semibold px-2 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
+              Total: {visitors.length}
+            </span>
           </div>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={lineVisitorData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                 <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#64748b' }} />
-                <YAxis tick={{ fontSize: 11, fill: '#64748b' }} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#64748b' }} />
                 <Tooltip
                   contentStyle={{ backgroundColor: '#0f172a', borderRadius: '8px', color: '#fff', fontSize: '12px' }}
                 />
@@ -249,33 +511,40 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ setActiv
               <PieIcon className="w-4 h-4 text-emerald-600" />
               <span>Kategori Pengunjung</span>
             </h3>
+            <span className="text-xs text-slate-400">{visitors.length} Visitor</span>
           </div>
-          <div className="h-72 flex flex-col items-center justify-center">
-            <ResponsiveContainer width="100%" height="80%">
-              <PieChart>
-                <Pie
-                  data={pieVisitorData}
-                  innerRadius={55}
-                  outerRadius={80}
-                  paddingAngle={4}
-                  dataKey="value"
-                >
-                  {pieVisitorData.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderRadius: '8px', color: '#fff', fontSize: '12px' }} />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="flex flex-wrap justify-center gap-2 mt-2">
-              {pieVisitorData.map((entry, idx) => (
-                <div key={entry.name} className="flex items-center gap-1.5 text-[11px] text-slate-600">
-                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
-                  <span>{entry.name}: {entry.value}</span>
-                </div>
-              ))}
+          {pieVisitorData.length > 0 ? (
+            <div className="h-72 flex flex-col items-center justify-center">
+              <ResponsiveContainer width="100%" height="80%">
+                <PieChart>
+                  <Pie
+                    data={pieVisitorData}
+                    innerRadius={55}
+                    outerRadius={80}
+                    paddingAngle={4}
+                    dataKey="value"
+                  >
+                    {pieVisitorData.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderRadius: '8px', color: '#fff', fontSize: '12px' }} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="flex flex-wrap justify-center gap-2 mt-2">
+                {pieVisitorData.map((entry, idx) => (
+                  <div key={entry.name} className="flex items-center gap-1.5 text-[11px] text-slate-600">
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
+                    <span>{entry.name}: {entry.value}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="h-72 flex items-center justify-center text-xs text-slate-400">
+              Belum ada data pengunjung tercatat.
+            </div>
+          )}
         </div>
       </div>
 
@@ -288,19 +557,25 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ setActiv
               <MapPin className="w-4 h-4 text-indigo-600" />
               <span>Top 5 Lokasi Patroli Teraktif</span>
             </h3>
-            <span className="text-xs text-slate-400">Total Scan QR</span>
+            <span className="text-xs text-slate-400">Total Aktual: {patrolLogs.length} Scan</span>
           </div>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={topPatrolLocations} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
-                <XAxis type="number" tick={{ fontSize: 11, fill: '#64748b' }} />
-                <YAxis dataKey="name" type="category" width={130} tick={{ fontSize: 10, fill: '#334155' }} />
-                <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderRadius: '8px', color: '#fff', fontSize: '12px' }} />
-                <Bar dataKey="totalScan" name="Total Scan" fill="#4f46e5" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          {topPatrolLocations.length > 0 ? (
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={topPatrolLocations} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                  <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11, fill: '#64748b' }} />
+                  <YAxis dataKey="name" type="category" width={140} tick={{ fontSize: 10, fill: '#334155' }} />
+                  <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderRadius: '8px', color: '#fff', fontSize: '12px' }} />
+                  <Bar dataKey="totalScan" name="Total Scan" fill="#4f46e5" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="h-64 flex items-center justify-center text-xs text-slate-400">
+              Belum ada data lokasi patroli.
+            </div>
+          )}
         </div>
 
         {/* Monthly Area Chart */}
@@ -308,7 +583,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ setActiv
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
               <Activity className="w-4 h-4 text-cyan-600" />
-              <span>Volume Patroli Bulanan vs Insiden</span>
+              <span>Volume Patroli Bulanan vs Insiden (6 Bulan Terakhir)</span>
             </h3>
           </div>
           <div className="h-64">
@@ -316,9 +591,10 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ setActiv
               <AreaChart data={monthlyData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                 <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#64748b' }} />
-                <YAxis tick={{ fontSize: 11, fill: '#64748b' }} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#64748b' }} />
                 <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderRadius: '8px', color: '#fff', fontSize: '12px' }} />
-                <Area type="monotone" dataKey="patroli" name="Patroli" stroke="#06b6d4" fill="#cff4fc" />
+                <Legend wrapperStyle={{ fontSize: '11px' }} />
+                <Area type="monotone" dataKey="patroli" name="Patroli Scan" stroke="#06b6d4" fill="#cff4fc" />
                 <Area type="monotone" dataKey="insiden" name="Insiden" stroke="#ef4444" fill="#fee2e2" />
               </AreaChart>
             </ResponsiveContainer>
@@ -672,34 +948,35 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ setActiv
 
       {/* HEATMAP & TOP TABLES ROW */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Heatmap Kepadatan Aktivitas Security */}
+        {/* Heatmap Kepadatan Aktivitas Security (Actual Data) */}
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
           <h3 className="text-sm font-bold text-slate-800 mb-1 flex items-center gap-2">
             <Activity className="w-4 h-4 text-rose-600" />
             <span>Heatmap Jam Rawan & Kepadatan</span>
           </h3>
-          <p className="text-xs text-slate-500 mb-4">Matrix tingkat aktivitas visitor & patroli per waktu</p>
+          <p className="text-xs text-slate-500 mb-4">Akumulasi aktual aktivitas visitor, patroli & insiden</p>
 
           <div className="overflow-x-auto">
             <table className="w-full text-center text-xs">
               <thead>
                 <tr>
-                  <th className="p-2 text-left text-slate-400 font-normal">Hari</th>
+                  <th className="p-1.5 text-left text-slate-400 font-normal">Hari</th>
                   {heatmapHours.map((h) => (
-                    <th key={h} className="p-2 text-slate-600 font-semibold">{h}</th>
+                    <th key={h} className="p-1.5 text-slate-600 font-semibold text-[11px]">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {heatmapDays.map((day, dIdx) => (
                   <tr key={day}>
-                    <td className="p-2 text-left font-medium text-slate-700">{day}</td>
+                    <td className="p-1.5 text-left font-medium text-slate-700">{day}</td>
                     {heatmapHours.map((_, hIdx) => {
-                      const colorClass = getHeatmapIntensity(dIdx, hIdx);
+                      const count = heatmapMatrix[dIdx][hIdx];
+                      const colorClass = getHeatmapIntensity(count);
                       return (
                         <td key={hIdx} className="p-1">
-                          <div className={`py-2 rounded font-bold text-[10px] ${colorClass}`}>
-                            {((dIdx + 1) * (hIdx + 2)) % 15 + 2}
+                          <div className={`py-1.5 rounded font-bold text-[10px] ${colorClass}`}>
+                            {count}
                           </div>
                         </td>
                       );
@@ -710,21 +987,21 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ setActiv
             </table>
           </div>
           <div className="flex items-center justify-end gap-3 mt-4 text-[10px] text-slate-500">
-            <span className="flex items-center gap-1"><span className="w-3 h-3 bg-slate-100 rounded" /> Rendah</span>
-            <span className="flex items-center gap-1"><span className="w-3 h-3 bg-blue-300 rounded" /> Sedang</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-3 bg-slate-100 rounded" /> 0</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-3 bg-blue-200 rounded" /> Rendah</span>
             <span className="flex items-center gap-1"><span className="w-3 h-3 bg-amber-400 rounded" /> Tinggi</span>
             <span className="flex items-center gap-1"><span className="w-3 h-3 bg-rose-500 rounded" /> Padat</span>
           </div>
         </div>
 
-        {/* Top 10 Visitor Table */}
+        {/* Top 10 Visitor Table (Actual Data) */}
         <div className="lg:col-span-2 bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
               <Award className="w-4 h-4 text-amber-500" />
               <span>Top 10 Pengunjung Paling Sering (Frekuensi Tinggi)</span>
             </h3>
-            <span className="text-xs text-slate-400">Periode 30 Hari</span>
+            <span className="text-xs text-slate-400">Periode 30 Hari Terakhir</span>
           </div>
 
           <div className="overflow-x-auto">
@@ -739,19 +1016,27 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ setActiv
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {topVisitors.map((v, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50">
-                    <td className="p-2.5 font-bold text-slate-500">#{idx + 1}</td>
-                    <td className="p-2.5 font-bold text-slate-900">{v.name}</td>
-                    <td className="p-2.5 text-slate-600">{v.category}</td>
-                    <td className="p-2.5 font-medium text-blue-700">{v.unit}</td>
-                    <td className="p-2.5 text-right font-mono font-bold text-slate-900">
-                      <span className="px-2 py-0.5 bg-blue-50 text-blue-800 rounded-full border border-blue-200">
-                        {v.count}x Kunjungan
-                      </span>
+                {topVisitors.length > 0 ? (
+                  topVisitors.map((v, idx) => (
+                    <tr key={`${v.name}-${idx}`} className="hover:bg-slate-50">
+                      <td className="p-2.5 font-bold text-slate-500">#{idx + 1}</td>
+                      <td className="p-2.5 font-bold text-slate-900">{v.name}</td>
+                      <td className="p-2.5 text-slate-600">{v.category}</td>
+                      <td className="p-2.5 font-medium text-blue-700">{v.unit}</td>
+                      <td className="p-2.5 text-right font-mono font-bold text-slate-900">
+                        <span className="px-2 py-0.5 bg-blue-50 text-blue-800 rounded-full border border-blue-200">
+                          {v.count}x Kunjungan
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={5} className="p-6 text-center text-slate-400">
+                      Belum ada data kunjungan visitor dalam 30 hari terakhir.
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
