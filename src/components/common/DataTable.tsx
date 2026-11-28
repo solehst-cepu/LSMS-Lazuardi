@@ -56,7 +56,7 @@ export function DataTable<T extends Record<string, any>>({
   defaultSortField,
   defaultSortOrder = 'desc',
   actions,
-  exportFilename = 'Laporan_LSMS',
+  exportFilename = 'Laporan_SELO',
 }: DataTableProps<T>) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string>>({});

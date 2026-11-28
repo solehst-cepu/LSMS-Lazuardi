@@ -435,7 +435,7 @@ export const MasterDataComponent: React.FC = () => {
         <div>
           <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
             <Database className="w-5 h-5 text-blue-700" />
-            <span>Master Data Referensi LSMS</span>
+            <span>Master Data Referensi SELO</span>
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
             Pengelolaan data master staff security, unit sekolah, gedung, lokasi patroli QR, dan armada.
@@ -488,71 +488,71 @@ export const MasterDataComponent: React.FC = () => {
       {activeMasterTab === 'database' && <SupabaseManagerComponent />}
       {activeMasterTab === 'staff' && (
         <DataTable
-          title="Master Data Staff Security LSMS"
+          title="Master Data Staff Security SELO"
           data={staffList}
           columns={filterColumns(staffColumns)}
           searchPlaceholder="Cari nama staff, NIP, atau jabatan..."
-          exportFilename="Master_Staff_Security_LSMS"
+          exportFilename="Master_Staff_Security_SELO"
         />
       )}
 
       {activeMasterTab === 'units' && (
         <DataTable
-          title="Master Data Unit Sekolah LSMS"
+          title="Master Data Unit Sekolah SELO"
           data={unitsList}
           columns={filterColumns(unitColumns)}
           searchPlaceholder="Cari nama unit atau kode..."
-          exportFilename="Master_Unit_LSMS"
+          exportFilename="Master_Unit_SELO"
         />
       )}
 
       {activeMasterTab === 'gedung' && (
         <DataTable
-          title="Master Data Gedung LSMS"
+          title="Master Data Gedung SELO"
           data={gedungList}
           columns={filterColumns(gedungColumns)}
           searchPlaceholder="Cari nama gedung..."
-          exportFilename="Master_Gedung_LSMS"
+          exportFilename="Master_Gedung_SELO"
         />
       )}
 
       {activeMasterTab === 'patrol-locations' && (
         <DataTable
-          title="Master Data Lokasi Patroli QR Code LSMS"
+          title="Master Data Lokasi Patroli QR Code SELO"
           data={patrolLocations}
           columns={filterColumns(patrolLocColumns)}
           searchPlaceholder="Cari lokasi atau kode QR..."
-          exportFilename="Master_Lokasi_Patroli_LSMS"
+          exportFilename="Master_Lokasi_Patroli_SELO"
         />
       )}
 
       {activeMasterTab === 'vehicles' && (
         <DataTable
-          title="Master Data Kendaraan Sekolah LSMS"
+          title="Master Data Kendaraan Sekolah SELO"
           data={vehiclesList}
           columns={filterColumns(vehicleColumns)}
           searchPlaceholder="Cari armada atau plat nomor..."
-          exportFilename="Master_Kendaraan_LSMS"
+          exportFilename="Master_Kendaraan_SELO"
         />
       )}
 
       {activeMasterTab === 'incidents' && (
         <DataTable
-          title="Master Data Jenis Insiden LSMS"
+          title="Master Data Jenis Insiden SELO"
           data={incidentCategories}
           columns={filterColumns(incidentColumns)}
           searchPlaceholder="Cari jenis insiden..."
-          exportFilename="Master_Jenis_Insiden_LSMS"
+          exportFilename="Master_Jenis_Insiden_SELO"
         />
       )}
 
       {activeMasterTab === 'purposes' && (
         <DataTable
-          title="Master Data Tujuan Kunjungan LSMS"
+          title="Master Data Tujuan Kunjungan SELO"
           data={purposesList}
           columns={filterColumns(purposeColumns)}
           searchPlaceholder="Cari tujuan kunjungan..."
-          exportFilename="Master_Tujuan_LSMS"
+          exportFilename="Master_Tujuan_SELO"
         />
       )}
 

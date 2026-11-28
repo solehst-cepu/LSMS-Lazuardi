@@ -31,7 +31,7 @@ export const LoginScreen: React.FC = () => {
     if (!res.success) {
       setErrorMessage(res.message);
     } else {
-      setSuccessMessage('Login berhasil! Mengalihkan ke Dashboard LSMS...');
+      setSuccessMessage('Login berhasil! Mengalihkan ke Dashboard SELO...');
     }
   };
 
@@ -47,8 +47,8 @@ export const LoginScreen: React.FC = () => {
           <div className="inline-flex items-center justify-center p-3 bg-blue-600/30 rounded-2xl border border-blue-400/30 mb-3 shadow-inner">
             <Shield className="w-9 h-9 text-blue-400" />
           </div>
-          <h1 className="text-xl font-bold tracking-tight">LSMS SECURITY</h1>
-          <p className="text-xs text-blue-200/80 font-medium mt-1">Lazuardi Security Management System</p>
+          <h1 className="text-xl font-bold tracking-tight">SELO</h1>
+          <p className="text-xs text-blue-200/80 font-medium mt-1">Security Log &amp; Operations System</p>
           <div className="inline-block mt-2 px-3 py-0.5 bg-blue-900/60 border border-blue-700/50 rounded-full text-[10px] text-blue-300 font-mono">
             Portal Otentikasi & Keamanan Terpadu
           </div>
@@ -247,7 +247,7 @@ export const LoginScreen: React.FC = () => {
               className="w-full py-3 bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold rounded-xl shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               <Shield className="w-4 h-4" />
-              <span>Masuk ke Sistem LSMS</span>
+              <span>Masuk ke Sistem SELO</span>
             </button>
           </form>
 
@@ -255,7 +255,7 @@ export const LoginScreen: React.FC = () => {
           <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] text-slate-600 space-y-1">
             <div className="font-bold text-slate-800 flex items-center gap-1.5">
               <Info className="w-3.5 h-3.5 text-blue-600" />
-              <span>Aturan & Kebijakan Keamanan Login LSMS</span>
+              <span>Aturan & Kebijakan Keamanan Login SELO</span>
             </div>
             <ul className="list-disc list-inside text-slate-500 space-y-0.5 text-[10px] pl-1">
               <li>Batasan gagal login: <span className="font-semibold text-slate-700">{loginPolicy.maxFailedAttempts}x percobaan</span> (terkunci {loginPolicy.lockoutDurationSeconds}s).</li>
@@ -267,7 +267,7 @@ export const LoginScreen: React.FC = () => {
 
         {/* Footer info */}
         <div className="bg-slate-50 border-t border-slate-200 p-3 text-center text-[11px] text-slate-400 font-medium">
-          Lazuardi Security Management System &copy; 2026. All Rights Reserved.
+          SELO - Security Log &amp; Operations System &copy; 2026. All Rights Reserved.
         </div>
       </div>
     </div>

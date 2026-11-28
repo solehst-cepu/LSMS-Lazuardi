@@ -75,10 +75,10 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
             <div>
               <h1 className="text-sm font-bold text-slate-900 tracking-tight leading-tight hidden sm:block">
-                LAZUARDI SECURITY MANAGEMENT SYSTEM
+                SELO - Security Log &amp; Operations System
               </h1>
               <h1 className="text-sm font-bold text-slate-900 tracking-tight leading-tight sm:hidden">
-                LSMS SECURITY
+                SELO
               </h1>
               <p className="text-[11px] text-slate-500 font-medium">Lazuardi GCS</p>
             </div>

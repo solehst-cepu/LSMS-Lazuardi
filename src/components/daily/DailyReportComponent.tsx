@@ -165,7 +165,7 @@ export const DailyReportComponent: React.FC = () => {
           <CheckCircle2 className="w-6 h-6 text-white" />
           <div>
             <p className="font-bold text-sm">Laporan Harian Berhasil Disimpan!</p>
-            <p className="text-xs text-emerald-100">Data serah terima jaga tersimpan di database LSMS.</p>
+            <p className="text-xs text-emerald-100">Data serah terima jaga tersimpan di database SELO.</p>
           </div>
         </div>
       )}
@@ -173,11 +173,11 @@ export const DailyReportComponent: React.FC = () => {
       {/* TAB 1: LIST TABLE */}
       {activeTab === 'list' && (
         <DataTable
-          title="Daily Security Reports LSMS"
+          title="Daily Security Reports SELO"
           data={dailyReports}
           columns={columns}
           searchPlaceholder="Cari tanggal, situasi, atau nama petugas..."
-          exportFilename="Daily_Security_Report_LSMS"
+          exportFilename="Daily_Security_Report_SELO"
           actions={
             currentUser.role === 'Administrator'
               ? (row) => (

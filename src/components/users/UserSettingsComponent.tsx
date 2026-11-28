@@ -304,7 +304,7 @@ export const UserSettingsComponent: React.FC = () => {
             <span>Pengaturan User & Kebijakan Login</span>
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Manajemen akun pengguna sistem LSMS, konfigurasi keamanan login, dan hak akses role.
+            Manajemen akun pengguna sistem SELO, konfigurasi keamanan login, dan hak akses role.
           </p>
         </div>
 
@@ -373,11 +373,11 @@ export const UserSettingsComponent: React.FC = () => {
       {/* TAB 1: USER ACCOUNTS TABLE */}
       {activeTab === 'accounts' && (
         <DataTable
-          title="Daftar Pengguna Sistem LSMS"
+          title="Daftar Pengguna Sistem SELO"
           data={usersList}
           columns={userColumns}
           searchPlaceholder="Cari username, nama, atau role..."
-          exportFilename="Daftar_Pengguna_LSMS"
+          exportFilename="Daftar_Pengguna_SELO"
         />
       )}
 
@@ -516,7 +516,7 @@ export const UserSettingsComponent: React.FC = () => {
               <table className="w-full text-xs text-left">
                 <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
                   <tr>
-                    <th className="p-3">Modul Operasional LSMS</th>
+                    <th className="p-3">Modul Operasional SELO</th>
                     <th className="p-3 text-center">Administrator</th>
                     <th className="p-3 text-center">Supervisor Security</th>
                     <th className="p-3 text-center">Petugas / User Pos</th>

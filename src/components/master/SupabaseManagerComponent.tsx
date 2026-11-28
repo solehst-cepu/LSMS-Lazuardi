@@ -309,7 +309,7 @@ export const SupabaseManagerComponent: React.FC = () => {
           <div className="p-3 bg-blue-50/70 rounded-xl border border-blue-100 text-[11px] text-blue-900 leading-relaxed flex items-start gap-2">
             <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
             <span>
-              Setiap kali Anda menambah, mengubah, atau menghapus data di LSMS, sistem otomatis menyimpannya ke Supabase Cloud secara asinkron.
+              Setiap kali Anda menambah, mengubah, atau menghapus data di SELO, sistem otomatis menyimpannya ke Supabase Cloud secara asinkron.
             </span>
           </div>
         </div>
@@ -352,7 +352,7 @@ export const SupabaseManagerComponent: React.FC = () => {
           <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-xs">
             <div className="flex items-center gap-2 text-slate-500">
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              <span>Dilengkapi konfigurasi Row Level Security (RLS) otomatis untuk keamanan data LSMS.</span>
+              <span>Dilengkapi konfigurasi Row Level Security (RLS) otomatis untuk keamanan data SELO.</span>
             </div>
             <a
               href={`https://supabase.com/dashboard/project/${SUPABASE_PROJECT_ID}/sql`}
@@ -376,7 +376,7 @@ export const SupabaseManagerComponent: React.FC = () => {
               <span>Daftar Tabel Terintegrasi Supabase (18 Tabel)</span>
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Struktur tabel database LSMS yang disinkronkan langsung ke PostgreSQL cloud Supabase.
+              Struktur tabel database SELO yang disinkronkan langsung ke PostgreSQL cloud Supabase.
             </p>
           </div>
           <span className="text-xs font-bold text-slate-700 bg-slate-100 px-3 py-1 rounded-lg border border-slate-200">

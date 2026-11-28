@@ -52,7 +52,7 @@ export const AuditLogComponent: React.FC = () => {
         <div>
           <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
             <History className="w-5 h-5 text-blue-700" />
-            <span>Audit Log & Traceability System LSMS</span>
+            <span>Audit Log & Traceability System SELO</span>
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
             Jejak rekam aktivitas transaksi user, pembuatan data, dan pengubahan status keamanan.
@@ -78,11 +78,11 @@ export const AuditLogComponent: React.FC = () => {
       </div>
 
       <DataTable
-        title="Audit Log System LSMS"
+        title="Audit Log System SELO"
         data={auditLogs}
         columns={columns}
         searchPlaceholder="Cari user, aksi, modul, atau detail..."
-        exportFilename="Audit_Log_LSMS"
+        exportFilename="Audit_Log_SELO"
         actions={
           currentUser.role === 'Administrator'
             ? (row) => (

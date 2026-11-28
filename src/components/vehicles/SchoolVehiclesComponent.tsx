@@ -145,11 +145,11 @@ export const SchoolVehiclesComponent: React.FC = () => {
       {/* TAB 1: LIST TABLE */}
       {activeTab === 'list' && (
         <DataTable
-          title="Log Kendaraan Sekolah LSMS"
+          title="Log Kendaraan Sekolah SELO"
           data={vehiclesLog}
           columns={columns}
           searchPlaceholder="Cari armada, plat nomor, driver, atau tujuan..."
-          exportFilename="Kendaraan_Sekolah_LSMS"
+          exportFilename="Kendaraan_Sekolah_SELO"
           actions={(row) => (
             <div className="flex items-center gap-2">
               {row.status === 'Masih Keluar' && (

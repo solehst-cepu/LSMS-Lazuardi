@@ -35,7 +35,7 @@ export function exportToPDF(
   // Title & Header Branding
   doc.setFontSize(16);
   doc.setTextColor(30, 64, 175); // Lazuardi Navy Blue
-  doc.text('LAZUARDI SECURITY MANAGEMENT SYSTEM (LSMS)', 40, 40);
+  doc.text('SELO - SECURITY LOG & OPERATIONS SYSTEM', 40, 40);
 
   doc.setFontSize(12);
   doc.setTextColor(51, 65, 85);
@@ -118,7 +118,7 @@ export function printData(title: string, data: any[], columns: ExportColumn[]) {
       </head>
       <body>
         <div class="header">
-          <h2>LAZUARDI SECURITY MANAGEMENT SYSTEM (LSMS)</h2>
+          <h2>SELO - SECURITY LOG &amp; OPERATIONS SYSTEM</h2>
           <p>Laporan: ${title} | Dicetak pada: ${new Date().toLocaleString('id-ID')}</p>
         </div>
         <table>

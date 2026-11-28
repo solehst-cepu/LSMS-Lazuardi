@@ -70,7 +70,7 @@ export const IncidentComponent: React.FC = () => {
       status: 'Open',
     });
 
-    setToastMessage('Laporan Insiden Berhasil Dibuat! Notifikasi prioritas dikirim ke seluruh Supervisor & Admin LSMS.');
+    setToastMessage('Laporan Insiden Berhasil Dibuat! Notifikasi prioritas dikirim ke seluruh Supervisor & Admin SELO.');
     setSuccessToast(true);
     setTimeout(() => {
       setSuccessToast(false);
@@ -229,11 +229,11 @@ export const IncidentComponent: React.FC = () => {
       {/* TAB 1: LIST DATATABLE */}
       {activeTab === 'list' && (
         <DataTable
-          title="Daftar Insiden LSMS"
+          title="Daftar Insiden SELO"
           data={incidents}
           columns={columns}
           searchPlaceholder="Cari lokasi, kronologi, nomor insiden, atau petugas..."
-          exportFilename="Laporan_Insiden_LSMS"
+          exportFilename="Laporan_Insiden_SELO"
           filterConfigs={[
             {
               key: 'status',

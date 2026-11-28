@@ -218,11 +218,11 @@ export const LostFoundComponent: React.FC = () => {
       {/* TAB 1: LIST TABLE */}
       {activeTab === 'list' && (
         <DataTable
-          title="Daftar Lost and Found LSMS"
+          title="Daftar Lost and Found SELO"
           data={lostAndFound}
           columns={columns}
           searchPlaceholder="Cari nama barang, penemu, pengambil, atau lokasi..."
-          exportFilename="Lost_And_Found_LSMS"
+          exportFilename="Lost_And_Found_SELO"
           actions={(row) => (
             <div className="flex items-center gap-2">
               {row.status === 'Belum Diambil' && (

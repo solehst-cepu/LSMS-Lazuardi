@@ -613,11 +613,11 @@ export const PatrolComponent: React.FC = () => {
       {/* TAB 2: LOGS TABLE */}
       {activeTab === 'logs' && (
         <DataTable
-          title="Riwayat Patroli QR Code LSMS"
+          title="Riwayat Patroli QR Code SELO"
           data={patrolLogs}
           columns={columns}
           searchPlaceholder="Cari titik lokasi, nama petugas, atau status..."
-          exportFilename="Laporan_Patroli_LSMS"
+          exportFilename="Laporan_Patroli_SELO"
           actions={
             currentUser.role === 'Administrator'
               ? (row) => (

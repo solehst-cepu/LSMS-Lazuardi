@@ -144,9 +144,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <Shield className="w-5 h-5" />
             </div>
             <div>
-              <span className="font-extrabold text-white text-sm tracking-wider block">LSMS LAZUARDI</span>
-              <span className="text-[10px] text-blue-400 font-semibold tracking-widest uppercase">
-                Security ERP
+              <span className="font-extrabold text-white text-sm tracking-wider block">SELO</span>
+              <span className="text-[10px] text-blue-400 font-semibold tracking-wider uppercase leading-tight block">
+                Security Log &amp; Operations
               </span>
             </div>
           </div>
@@ -229,7 +229,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Sidebar Footer */}
         <div className="p-3 border-t border-slate-800 text-[11px] text-slate-500 text-center">
-          LSMS v2.5 Lazuardi GIS &copy; {new Date().getFullYear()}
+          SELO - Security Log &amp; Operations System &copy; {new Date().getFullYear()}
         </div>
       </aside>
     </>

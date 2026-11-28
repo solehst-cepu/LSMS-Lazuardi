@@ -181,11 +181,11 @@ export const VisitorCheckOut: React.FC = () => {
 
       {/* DATATABLE WITH SEARCH, FILTER, SORT, EXPORT EXCEL/PDF, PRINT */}
       <DataTable
-        title="Laporan Visitors LSMS"
+        title="Laporan Visitors SELO"
         data={visitors}
         columns={columns}
         searchPlaceholder="Cari nama, nomor kartu, instansi, atau unit..."
-        exportFilename="Laporan_Visitor_LSMS"
+        exportFilename="Laporan_Visitor_SELO"
         filterConfigs={[
           {
             key: 'status',

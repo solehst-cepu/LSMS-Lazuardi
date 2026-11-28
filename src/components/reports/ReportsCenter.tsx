@@ -311,13 +311,13 @@ export const ReportsCenter: React.FC = () => {
   }, [periodPreset, dateCalculations, specificDate, startDate, endDate]);
 
   const handleExcel = () => {
-    const filename = `LSMS_Laporan_${selectedModule}_${periodPreset}`;
+    const filename = `SELO_Laporan_${selectedModule}_${periodPreset}`;
     exportToExcel(displayData, columns, filename);
   };
 
   const handlePDF = () => {
     const title = `${moduleLabels[selectedModule]} (${periodLabel})`;
-    const filename = `LSMS_Laporan_${selectedModule}_${periodPreset}`;
+    const filename = `SELO_Laporan_${selectedModule}_${periodPreset}`;
     exportToPDF(title, displayData, columns, filename, 'l');
   };
 
@@ -333,7 +333,7 @@ export const ReportsCenter: React.FC = () => {
         <div>
           <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
             <FileSpreadsheet className="w-5 h-5 text-blue-700" />
-            <span>Pusat Rekapitulasi & Ekspor Laporan LSMS</span>
+            <span>Pusat Rekapitulasi & Ekspor Laporan SELO</span>
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
             Filter fleksibel berdasarkan periode hari/tanggal, rentang waktu kustom, unit sekolah, dan petugas.

@@ -270,11 +270,11 @@ export const BarangTitipanComponent: React.FC = () => {
       {/* TAB 1: LIST TABLE */}
       {activeTab === 'list' && (
         <DataTable
-          title="Daftar Barang Titipan LSMS"
+          title="Daftar Barang Titipan SELO"
           data={barangTitipan}
           columns={columns}
           searchPlaceholder="Cari pemilik, nomor HP, deskripsi barang, atau petugas..."
-          exportFilename="Barang_Titipan_LSMS"
+          exportFilename="Barang_Titipan_SELO"
           actions={(row) => (
             <div className="flex items-center gap-2">
               {row.status === 'Dititipkan' && (
